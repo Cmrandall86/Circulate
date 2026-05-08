@@ -23,7 +23,7 @@ const rootRoute = createRootRouteWithContext<{}>()({
   notFoundComponent: () => (
     <div className="p-6 card border border-base-700 max-w-lg mx-auto mt-12">
       <h2 className="text-lg font-semibold mb-2 text-ink-400">Not found</h2>
-      <p className="text-ink-600">The page you're looking for doesn't exist.</p>
+      <p className="text-ink-600">The page you're looking for doesn't exist. <a href="/" className="text-ink-400 underline">Go home</a></p>
     </div>
   ),
 })
