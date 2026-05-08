@@ -45,10 +45,7 @@ Located in `/migrations/`, these are applied sequentially:
 ## Edge Functions
 
 ### `admin-users`
-Administrative functions for user management.
-
-### `send-group-invitation`
-Handles sending invitations to join groups.
+Administrative functions for user management (list, create, edit role, ban, delete users).
 
 ## Documentation
 

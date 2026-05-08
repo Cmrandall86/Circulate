@@ -4,8 +4,6 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import { ensureUserBootstrap } from '@/lib/bootstrapUser'
 
-// Optional: console helper in the browser
-if (typeof window !== 'undefined') (window as any).supabase = supabase
 
 type AuthContextValue = {
   user: User | null
