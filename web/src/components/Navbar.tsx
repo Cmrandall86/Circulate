@@ -25,7 +25,7 @@ export default function Navbar() {
           to="/" 
           className={`font-semibold ${isActive('/') ? 'text-mint-400' : 'text-mint-400/70 hover:text-mint-400'}`}
         >
-          Stuff Cycler
+          Circulate
         </Link>
         <div className="flex items-center gap-3">
           {user && (

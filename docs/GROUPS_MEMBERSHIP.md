@@ -1,6 +1,6 @@
 # Groups Membership & Invitations
 
-This document describes the Groups membership and invitation system implemented in Stuff Cycler.
+This document describes the Groups membership and invitation system implemented in Circulate.
 
 ## Overview
 

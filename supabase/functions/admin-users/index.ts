@@ -8,17 +8,17 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("
 
 // CORS allow-list: comma-separated in ALLOW_ORIGINS; fallback keeps localhost for dev
 const RAW_ALLOWED = Deno.env.get("ALLOW_ORIGINS")
-  ?? "http://localhost:5173,https://stuff-cycler.netlify.app";
+  ?? "http://localhost:5173,https://circulate.netlify.app";
 const ALLOWED_ORIGINS = RAW_ALLOWED.split(",").map(s => s.trim());
 
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
 
-  // Allow Netlify preview URLs like https://<hash>--stuff-cycler.netlify.app
+  // Allow Netlify preview URLs like https://<hash>--circulate.netlify.app
   try {
     const u = new URL(origin);
-    if (u.hostname.endsWith("--stuff-cycler.netlify.app")) return true;
+    if (u.hostname.endsWith("--circulate.netlify.app")) return true;
   } catch { /* ignore */ }
 
   return false;

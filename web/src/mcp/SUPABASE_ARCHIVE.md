@@ -4,7 +4,7 @@
 `/supabase/archive-debug-scripts/`
 
 ## Description
-Historical debugging and fix scripts from development work on the Stuff Cycler database.
+Historical debugging and fix scripts from development work on the Circulate database.
 
 ## MCP Functions for Archive Access
 

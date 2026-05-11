@@ -1,6 +1,6 @@
 # Supabase Directory
 
-This directory contains all Supabase-related configuration, migrations, functions, and documentation for the Stuff Cycler project.
+This directory contains all Supabase-related configuration, migrations, functions, and documentation for the Circulate project.
 
 ## Structure
 
