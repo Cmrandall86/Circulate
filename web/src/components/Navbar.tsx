@@ -41,11 +41,11 @@ export default function Navbar() {
             </Link>
           )}
           {isAdmin && (
-            <Link 
-              to="/admin/users" 
+            <Link
+              to="/admin/users"
               className={`transition-colors ${
-                isActive('/admin/users') 
-                  ? 'text-mint-400 font-medium' 
+                isActive('/admin/users')
+                  ? 'text-mint-400 font-medium'
                   : 'text-ink-600 hover:text-ink-400'
               }`}
             >

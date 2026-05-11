@@ -10,7 +10,23 @@ import { supabase } from '@/lib/supabaseClient'
 import type { Item } from '@/lib/types'
 import type { ImageFile } from './types'
 
-export default function ItemForm({ itemId, item }: { itemId?: string; item?: Item }) {
+interface ItemFormProps {
+  itemId?: string
+  item?: Item
+  /**
+   * True when an admin is editing an item they do not own.
+   * Shows an admin notice and bypasses client-side ownership checks on image deletion.
+   */
+  isAdminEdit?: boolean
+  /**
+   * When provided, called instead of the normal useUpdateItem path.
+   * Used when an admin is updating another user's item via the Edge Function.
+   * Must return { id: string }.
+   */
+  onUpdate?: (data: import('./types').ItemFormData) => Promise<{ id: string }>
+}
+
+export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }: ItemFormProps) {
   const navigate = useNavigate()
   const { data: groups } = useMyGroups()
   const { data: existingVisibilityGroups } = useItemGroups(itemId ?? '')
@@ -93,7 +109,11 @@ export default function ItemForm({ itemId, item }: { itemId?: string; item?: Ite
       
       let savedItem
       if (itemId) {
-        savedItem = await updateItem.mutateAsync(formData)
+        if (onUpdate) {
+          savedItem = await onUpdate(formData)
+        } else {
+          savedItem = await updateItem.mutateAsync(formData)
+        }
       } else {
         savedItem = await createItem.mutateAsync(formData)
       }
@@ -103,8 +123,12 @@ export default function ItemForm({ itemId, item }: { itemId?: string; item?: Ite
       // Delete marked images
       if (imagesToDelete.length > 0) {
         await Promise.all(
-          imagesToDelete.map(id => 
-            deleteImage.mutateAsync({ imageId: id, itemId: finalItemId })
+          imagesToDelete.map(id =>
+            deleteImage.mutateAsync({
+              imageId: id,
+              itemId: finalItemId,
+              bypassOwnerCheck: isAdminEdit,
+            })
           )
         )
       }
@@ -158,7 +182,13 @@ export default function ItemForm({ itemId, item }: { itemId?: string; item?: Ite
       <h1 className="text-2xl text-ink-400 mb-6">
         {itemId ? 'Edit Item' : 'Create New Item'}
       </h1>
-      
+
+      {isAdminEdit && (
+        <div className="mb-4 px-3 py-2 rounded border border-yellow-600/40 bg-yellow-600/10 text-yellow-400 text-sm">
+          Admin edit — you are modifying another user's item.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <Input
           label="Title"

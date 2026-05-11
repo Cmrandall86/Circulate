@@ -304,7 +304,16 @@ export function useDeleteImage() {
   const qc = useQueryClient()
   
   return useMutation({
-    mutationFn: async ({ imageId, itemId }: { imageId: string; itemId: string }) => {
+    mutationFn: async ({
+      imageId,
+      itemId,
+      bypassOwnerCheck = false,
+    }: {
+      imageId: string
+      itemId: string
+      /** Set to true when an admin is deleting an image they do not own. */
+      bypassOwnerCheck?: boolean
+    }) => {
       // Get the image path
       const { data: image, error: fetchError } = await supabase
         .from('item_images')
@@ -315,16 +324,18 @@ export function useDeleteImage() {
       if (fetchError) throw fetchError
       if (!image) throw new Error('Image not found')
 
-      // Verify user owns the item
-      const { data: item } = await supabase
-        .from('items')
-        .select('owner_id')
-        .eq('id', image.item_id)
-        .single()
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (item?.owner_id !== user?.id) {
-        throw new Error('Not authorized to delete this image')
+      if (!bypassOwnerCheck) {
+        // Verify user owns the item (skip for admin callers)
+        const { data: item } = await supabase
+          .from('items')
+          .select('owner_id')
+          .eq('id', image.item_id)
+          .single()
+        
+        const { data: { user } } = await supabase.auth.getUser()
+        if (item?.owner_id !== user?.id) {
+          throw new Error('Not authorized to delete this image')
+        }
       }
 
       // Delete from storage

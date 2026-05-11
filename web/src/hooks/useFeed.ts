@@ -8,7 +8,7 @@ type ItemWithImages = Item & {
 
 export function useFeed() {
   return useQuery({
-    queryKey: ['feed'],
+    queryKey: ['feed'] as const,
     queryFn: async (): Promise<ItemWithImages[]> => {
       const { data, error } = await supabase
         .from('items')
@@ -20,42 +20,25 @@ export function useFeed() {
         .limit(50)
 
       if (error) throw error
-      
-      // Generate signed URLs for first image of each item
-      const itemsWithSignedUrls = await Promise.all(
+
+      // Generate a signed URL for the first image of each item
+      return Promise.all(
         (data || []).map(async (item) => {
           if (item.item_images && item.item_images.length > 0) {
-            // Sort by sort_order and get first image
-            const sortedImages = [...item.item_images].sort((a, b) => a.sort_order - b.sort_order)
-            const firstImage = sortedImages[0]
-            
+            const sorted = [...item.item_images].sort((a, b) => a.sort_order - b.sort_order)
+            const first = sorted[0]
             try {
-              const { data: signedUrlData } = await supabase.storage
+              const { data: signed } = await supabase.storage
                 .from('images')
-                .createSignedUrl(firstImage.path, 3600) // 1 hour expiry
-              
-              return {
-                ...item,
-                item_images: [{
-                  ...firstImage,
-                  signed_url: signedUrlData?.signedUrl
-                }]
-              }
-            } catch (err) {
-              console.error('Error generating signed URL for image:', err)
-              return {
-                ...item,
-                item_images: [firstImage]
-              }
+                .createSignedUrl(first.path, 3600)
+              return { ...item, item_images: [{ ...first, signed_url: signed?.signedUrl }] }
+            } catch {
+              return { ...item, item_images: [first] }
             }
           }
           return item
         })
-      )
-
-      return itemsWithSignedUrls as ItemWithImages[]
+      ) as Promise<ItemWithImages[]>
     },
   })
 }
-
-
