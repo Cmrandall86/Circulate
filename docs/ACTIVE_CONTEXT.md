@@ -4,6 +4,16 @@
 
 Last updated: May 2026
 
+### Document Hierarchy
+
+| Document | Role |
+|---|---|
+| `README.md` | Authoritative project reference (stack, schema, known issues, roadmap) |
+| `docs/ACTIVE_CONTEXT.md` ← **this file** | Primary startup context for all future Cursor sessions |
+| `docs/RLS_HARDENING_PLAN.md` | Archival / reference only — consulted when actively implementing RLS phases, not needed at session start |
+
+> **For future sessions:** load `README.md` + `ACTIVE_CONTEXT.md`. Fetch `RLS_HARDENING_PLAN.md` only when executing RLS work.
+
 ---
 
 ## 1. Product Summary
@@ -78,7 +88,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
 - **Hand-rolled types**: `web/src/lib/types.ts` is manually maintained. No `supabase gen types typescript` run yet.
-- **Query key inconsistency**: item detail/edit use `['item', id]`; `itemKeys.one(id)` is `['items', id]`. Detail views won't refresh after edits until stale.
+- ~~**Query key inconsistency**~~: item detail/edit now use `itemKeys.one(id)` = `['items', id]` everywhere. Fixed.
 - ~~**`get_user_email()` PII risk**~~ — fixed in migration 12; function now restricted to admin callers only.
 - `zod` installed but never used.
 - No `typecheck` script was missing (now added: `"typecheck": "tsc --noEmit"`).
@@ -91,12 +101,11 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ## 5. Current Active Priorities (ordered)
 
-1. **Deploy `admin-items` Edge Function** — required for admin item detail/edit/archive/delete. Not yet deployed.
-2. **RLS hardening** — enable RLS on all public-schema tables; write reviewed policy set (derive from `supabase/archive-debug-scripts/rls-policies.sql`).
+1. **RLS hardening** — enable RLS on all public-schema tables; write reviewed policy set (derive from `supabase/archive-debug-scripts/rls-policies.sql`).
 3. **Migration chain cleanup** — reconcile into a clean sequential chain; fix migration 03 references to non-existent tables; make migration 11 idempotent; drop the broad-permission migration 08 policy.
 4. **Add `items.visibility` to `bootstrap.sql`** — or replace bootstrap entirely with the migration chain.
 5. **Generate Supabase types** — `supabase gen types typescript --linked > web/src/lib/database.types.ts`; wire into `createClient<Database>()`.
-6. **Unify item query keys** — align `['item', id]` vs `['items', id]` across routes and mutations.
+6. ~~**Unify item query keys**~~ ✅ Done
 7. **Replace `alert()` with a toast component**.
 8. **Add top-level React error boundary** in `main.tsx`.
 9. **ESLint** — either add deps + `lint` script or delete `eslint.config.js`.
@@ -112,10 +121,12 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
   - `/item/$id/edit` — admins can edit any item; admin notice shown; non-owner saves route through `admin-items` Edge Function
   - Feed unchanged — no admin-specific feed path; normal query is sufficient since `items` has no RLS
 - **Added `admin-items` Edge Function** for privileged item operations (see §3)
+- **Deployed `admin-items` to production** — admin item detail, archive, edit (non-owned), and delete flows are operational on https://use-circulate.netlify.app
 - **Deleted stale files**: `web/stuff_cycler_starter_kit_scaffold_sql_rls_notes.md`, orphaned root `package-lock.json`
 - **Added `typecheck` script** to `web/package.json`
 - **`web/package-lock.json`** regenerated with correct `"name": "circulate"`
 - **Restricted `get_user_email()` to admin users only** (migration 12) — closed live PII exposure where any authenticated user could resolve any UUID to an email address
+- **Unified item query keys** — `routes/Item.tsx`, `routes/ItemEdit.tsx`, and `features/admin-items/api.ts` all now use `itemKeys.one(id)` for detail queries and invalidations; typecheck and build passed clean
 
 ---
 
@@ -142,13 +153,60 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
    supabase secrets set SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... ALLOW_ORIGINS=http://localhost:5173,https://use-circulate.netlify.app
    ```
 2. **Verify admin flow end-to-end** in production: item detail, archive, delete, edit for another user's item.
-3. **Unify item query keys** — fix the `['item', id]` vs `['items', id]` mismatch so edits invalidate the detail page correctly.
-4. **Begin RLS hardening** — start with `profiles` and `items` as the highest-impact tables.
+3. ~~**Unify item query keys**~~ ✅ Done
+4. ~~**RLS hardening — Phase 1 (remaining):**~~ ✅ Phase 1 complete — migration 03 fixed; production visibility audit done (all items are `public`, no unexpected values). See §9 for Phase 2 onwards.
 5. **Run `supabase gen types typescript`** and wire into the client to eliminate manual type drift.
 
 ---
 
-## 9. AI-Assisted Development Guidelines / Token Discipline
+## 9. RLS Hardening — Status & Phased Plan
+
+### Current State
+
+Only `group_members` has RLS enabled (migration 07). All other public-schema tables are fully unprotected:
+
+> `items`, `groups`, `profiles`, `item_images`, `item_visibility_groups`, `interests`, `reservations`
+
+The `items.visibility` column is **decorative** — it is written and read by the frontend but enforces nothing at the DB level. Group-visibility rules are entirely client-enforced today.
+
+### Prior Failure History
+
+Multiple past RLS attempts failed due to a **recursion loop**:
+
+```
+items → item_visibility_groups → group_members → items
+```
+
+This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` nuclear rollback was used each time. All attempts are preserved in `supabase/archive-debug-scripts/` (reference only — do not re-apply).
+
+### Critical Architectural Requirement: Recursion-Safe Helper
+
+**All future RLS policies on `items` and related tables must use a `SECURITY DEFINER` helper function** (`public.user_in_item_groups(item_uuid, user_uuid)`) rather than joining `item_visibility_groups` and `group_members` directly inside a policy. This breaks the recursion cycle. The full function definition is in `docs/RLS_HARDENING_PLAN.md` — fetch it when implementing Phase 2.
+
+### Known Gap: Admin Image Deletion
+
+`useDeleteImage(bypassOwnerCheck: true)` in the frontend bypasses the owner check but still uses the normal Supabase client. Once `item_images` has RLS, individual image deletions during admin edits of non-owned items will be rejected by policy.
+
+- Full-item admin delete via the `admin-items` Edge Function (service-role) is **not affected**.
+- Deferred to **Phase 5**: update this path to use service-role or route through the Edge Function.
+
+### Phased Rollout
+
+| Phase | Work | Status |
+|---|---|---|
+| 1 | ~~Restrict `get_user_email()` to admin only~~ (migration 12) | ✅ Done |
+| 1 | ~~Fix migration 03 — remove broken index lines for non-existent tables~~ | ✅ Done |
+| 1 | ~~Audit `items.visibility` distribution in production~~ — all rows are `public`, no nulls | ✅ Done |
+| 2 | Create `public.user_in_item_groups()` SECURITY DEFINER helper | Pending |
+| 3 | Enable RLS on `items`, `profiles`, `groups` | Pending |
+| 4 | Enable RLS on `item_visibility_groups`, `item_images`; audit `group_members` policy | Pending |
+| 5 | Fix `useDeleteImage` admin path for RLS compatibility | Pending |
+
+**Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `TEMP-DISABLE-RLS.sql` accessible through Phase 4 as a rollback option.
+
+---
+
+## 10. AI-Assisted Development Guidelines / Token Discipline
 
 - **Prefer small, scoped changes** over broad refactors.
 - **Do not create Canvas artifacts, large planning documents, or new docs** unless explicitly requested.

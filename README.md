@@ -115,7 +115,7 @@ Circulate/
     │   ├── 06_trigger_add_owner.sql
     │   ├── 07_policies_group_members.sql
     │   ├── 08_storage_policies_images.sql # Old, broad-permission set
-    │   ├── 10_get_user_email_function.sql # ⚠️ PII leak risk, see Security
+    │   ├── 10_get_user_email_function.sql # ⚠️ Restricted to admin only via migration 12
     │   └── 11_storage_policies_images.sql # Newer, item-scoped set
     └── archive-debug-scripts/             # Historical fix scripts, reference only
 ```
@@ -168,11 +168,11 @@ Run `supabase/bootstrap.sql`. This creates: `groups`, `group_members`, `items`, 
 
 | File | Status | What it does |
 |------|--------|--------------|
-| `03_indexes_and_constraints.sql` | ⚠️ **Will fail as-is** | References `group_invitations` and `group_join_requests` tables that do not exist. Comment out the lines for those two tables, or skip this file, and apply only the `group_members` parts. |
+| `03_indexes_and_constraints.sql` | ✅ Safe | Ghost-table index references (`group_invitations`, `group_join_requests`) removed. Only `group_members` indexes and `uq_group_single_owner` constraint remain. |
 | `06_trigger_add_owner.sql` | ✅ Safe | Adds membership row for group owner automatically. |
 | `07_policies_group_members.sql` | ✅ Safe | Enables RLS and policies on `group_members`. |
 | `08_storage_policies_images.sql` | ⚠️ **Do not apply on its own** | Grants `anon` SELECT on the entire `images` bucket — undermines privacy. Skip this and apply `11` instead. |
-| `10_get_user_email_function.sql` | ⚠️ Security concern | See [Security](#security-concerns). Apply only if you accept the PII tradeoff for the user-search feature. |
+| `10_get_user_email_function.sql` | ⚠️ Apply + migration 12 together | Creates the function; migration 12 restricts it to admin callers only. Apply both or neither. |
 | `11_storage_policies_images.sql` | ⚠️ Requires patch | This file references `items.visibility`, a column that is **not** in `bootstrap.sql`. Add `alter table items add column if not exists visibility text not null default 'public';` before running. Not idempotent — only run once. |
 
 **3c. Required schema patch** (not yet committed as its own migration):
@@ -315,7 +315,7 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 ### 🔴 Schema drift (must fix before a fresh deploy)
 
 1. **`items.visibility` column is missing from `bootstrap.sql`** but is referenced by the frontend (every item create/update writes it), by migration `11_storage_policies_images.sql`, and by most archive RLS scripts.
-2. **Migration `03_indexes_and_constraints.sql` references tables that do not exist** in the committed schema (`group_invitations`, `group_join_requests`). A fresh apply will error.
+2. ~~**Migration `03_indexes_and_constraints.sql` references tables that do not exist**~~ — **Fixed.** Ghost-table index references removed; only `group_members` indexes remain.
 3. **Migrations `08` and `11` for storage are contradictory.** `08` grants anon SELECT on the entire bucket; `11` enforces item-scoped reads for authenticated users. Both have different policy names so they accumulate rather than replace, which means if both are applied the broad-permission `08` policy wins via the OR semantics of multiple permissive policies.
 4. **Bootstrap claims RLS, but does not enable it.** `bootstrap.sql` contains zero `enable row level security` or `create policy` statements. The only public-schema RLS that ships through migrations is on `group_members` (file `07`). `groups`, `items`, `item_images`, `item_visibility_groups`, `interests`, `reservations`, and `profiles` are **unprotected by RLS** out of the box. The full RLS picture exists in `supabase/archive-debug-scripts/rls-policies.sql` but is explicitly marked reference-only.
 5. **Migration numbering has gaps**: 03, 06, 07, 08, 10, 11. Missing 01, 02, 04, 05, 09. Either renumber as a clean `01_…` sequence (and version-stamp `bootstrap.sql`) or rebuild the chain.
@@ -324,7 +324,7 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 
 ### 🔴 Security concerns
 
-1. **`get_user_email(uuid)`** in migration `10` is `SECURITY DEFINER`, reads from `auth.users.email`, and is granted to any `authenticated` role. **Any logged-in user can resolve any user UUID to that user's email address.** This was added to power the member-add user-search; replace with a `SECURITY DEFINER` function that only returns emails for users who share at least one group with the caller, or restrict to admins.
+1. ~~**`get_user_email(uuid)` PII exposure**~~ — **Fixed (migration 12).** The function is now restricted to `admin` callers only. Any non-admin call raises an exception. The `search_path` hardening item below still applies.
 2. **Storage policy `08_storage_policies_images.sql`** grants `SELECT TO anon, authenticated` on every object in the `images` bucket. Anyone with the storage URL can read any image. Drop or replace with `11`.
 3. **`SECURITY DEFINER` functions without `set search_path = …`**: `add_owner_membership` (migration `06`), `get_user_email` (migration `10`). Standard Postgres hardening guidance is to pin `search_path` on every `SECURITY DEFINER` function.
 4. **`get_my_role()` is granted to `anon`**. Low impact (returns NULL for anonymous), but unusual and worth tightening to `authenticated`.
@@ -332,7 +332,7 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 
 ### 🟡 Frontend code quality
 
-1. **Query-key inconsistency for items.** Detail/edit routes use `['item', id]` while mutations in `features/items/api.ts` invalidate `itemKeys.one(id) = ['items', id]`. Detail views won't refresh after edits until staleTime expires. Unify on one key shape.
+1. ~~**Query-key inconsistency for items.**~~ — **Fixed.** All detail queries and invalidations now use `itemKeys.one(id)` = `['items', id]`.
 2. **Hand-rolled Supabase types.** `web/src/lib/types.ts` is manually maintained. `features/groups/types.ts` defines a parallel `Group` / `GroupMember` with a stricter `Role` union. `Item` in `lib/types.ts` does not include `visibility`, but `ItemForm` casts to access it. Generate types with `supabase gen types typescript` and wire them into `createClient<Database>()`.
 3. **`zod` is installed but never imported.** Either adopt it for form validation (recommended) or remove the dependency.
 4. **`eslint.config.js` is orphaned.** No `eslint` or plugin packages in `web/package.json` and no `lint` script. The config currently does nothing.
@@ -371,13 +371,13 @@ Concrete, mechanical tasks. Mostly safe and quick. Suitable for a "cleanup" PR b
 - [ ] **Remove unused `zod` dependency** or start using it (recommend the latter).
 - [ ] **Generate Supabase types** (`supabase gen types typescript --linked > web/src/lib/database.types.ts`) and wire into `createClient`.
 - [ ] **Unify `Group`/`GroupMember` type definitions** (`lib/types.ts` vs `features/groups/types.ts`).
-- [ ] **Unify item query keys** under `itemKeys`. Update detail/edit pages.
+- [x] **Unify item query keys** under `itemKeys`. ✅ Done
 - [ ] **Replace `alert()` with a toast component**.
 - [ ] **Add a top-level React error boundary** in `main.tsx`.
 - [ ] **Reconcile migrations** into a clean sequential chain (`01_schema.sql`, `02_triggers.sql`, `03_rls.sql`, `04_storage.sql`, …). Promote the consolidated RLS story from `archive-debug-scripts/rls-policies.sql` into a real migration, *after* review and removal of overly permissive `profiles` policies.
 - [ ] **Add the `items.visibility` column to `bootstrap.sql`** (or, better, replace bootstrap with the migration chain entirely).
 - [ ] **Remove or implement `send-group-invitation`** referenced in `supabase/README.md`.
-- [ ] **Tighten `get_user_email`** (group-mate or admin only).
+- [x] **Tighten `get_user_email`** — restricted to admin callers only (migration 12). ✅ Done
 - [ ] **Drop migration `08` storage policy set** (keep only `11`).
 - [ ] **Pin `search_path`** on all `SECURITY DEFINER` functions.
 
@@ -393,7 +393,7 @@ These overlap with [Known Issues](#known-issues--technical-debt) but are listed 
 
 1. **RLS hardening.** Enable RLS on every public-schema table and write a reviewed policy set. Single migration, derived from `archive-debug-scripts/rls-policies.sql` but with `profiles` SELECT tightened (don't expose all profile rows to anonymous), `INSERT` not `with check (true)`, etc.
 2. **Migration chain rebuild.** Either: (a) make `bootstrap.sql` the single source of truth for v1 schema and renumber migrations from `01`, or (b) drop `bootstrap.sql` and rely on `supabase db push` against the migrations folder. Decide one model and document it.
-3. **Email-lookup hardening** (replace `get_user_email`).
+3. ~~**Email-lookup hardening**~~ — restricted to admin via migration 12. ✅ Done
 4. **Storage policy reconciliation** (delete `08`, keep `11` after making it idempotent).
 5. **Add basic CI**: GitHub Actions running `tsc --noEmit`, `npm run build`, and `eslint .` on every PR.
 
