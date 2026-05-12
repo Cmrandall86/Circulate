@@ -1,5 +1,7 @@
 # RLS Hardening Plan
 
+> **Archival / reference document.** The high-signal summary (current state, recursion risk, phased rollout, admin image gap) has been consolidated into `docs/ACTIVE_CONTEXT.md §9`. Refer to this file when actively implementing a specific RLS phase — particularly for the full `user_in_item_groups()` function definition and migration-level details. Do not load this file as startup context for general sessions.
+
 ## Current State
 
 RLS is **riskier than it looks.** Only `group_members` has RLS active (migration 07). Seven tables are fully unprotected, including `profiles` (which stores the `role` field), `items`, and `groups`.
