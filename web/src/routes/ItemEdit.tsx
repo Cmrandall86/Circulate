@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import ItemForm from '@/features/items/ItemForm'
 import type { Item } from '@/lib/types'
 import { useAdminItem, useAdminUpdateItem } from '@/features/admin-items/api'
+import { itemKeys } from '@/features/items/api'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 import type { ItemFormData } from '@/features/items/types'
@@ -26,7 +27,7 @@ export default function ItemEdit() {
 
   // Normal fetch — subject to RLS
   const normalItemQuery = useQuery({
-    queryKey: ['item', id],
+    queryKey: itemKeys.one(id),
     enabled: normalQueryEnabled,
     queryFn: async () => {
       const { data, error } = await supabase.from('items').select('*').eq('id', id).single()

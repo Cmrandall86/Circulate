@@ -6,7 +6,7 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Badge from '../components/ui/Badge'
 import type { Item } from '../lib/types'
-import { useDeleteItem, useItemImages } from '@/features/items/api'
+import { useDeleteItem, useItemImages, itemKeys } from '@/features/items/api'
 import {
   useAdminItem,
   useAdminArchiveItem,
@@ -40,7 +40,7 @@ export default function ItemDetail() {
 
   // Normal fetch — subject to RLS (public items or group-visible items the user can see)
   const normalItemQuery = useQuery({
-    queryKey: ['item', id],
+    queryKey: itemKeys.one(id),
     enabled: normalQueryEnabled,
     queryFn: async () => {
       const { data, error } = await supabase

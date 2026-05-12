@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Item } from '@/lib/types'
 import type { ItemFormData, ItemImageWithUrl, ItemVisibilityGroup } from '@/features/items/types'
+import { itemKeys } from '@/features/items/api'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export function useAdminArchiveItem() {
     onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: adminItemKeys.one(id) })
       qc.invalidateQueries({ queryKey: adminItemKeys.all })
-      qc.invalidateQueries({ queryKey: ['item', id] })
+      qc.invalidateQueries({ queryKey: itemKeys.one(id) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
@@ -108,7 +109,7 @@ export function useAdminUpdateItem() {
     onSuccess: (_result, { id }) => {
       qc.invalidateQueries({ queryKey: adminItemKeys.one(id) })
       qc.invalidateQueries({ queryKey: adminItemKeys.all })
-      qc.invalidateQueries({ queryKey: ['item', id] })
+      qc.invalidateQueries({ queryKey: itemKeys.one(id) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
@@ -124,7 +125,7 @@ export function useAdminDeleteItem() {
     },
     onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: adminItemKeys.all })
-      qc.invalidateQueries({ queryKey: ['item', id] })
+      qc.invalidateQueries({ queryKey: itemKeys.one(id) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
