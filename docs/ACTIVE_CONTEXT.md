@@ -87,7 +87,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - **RLS not enabled** on most tables (`items`, `groups`, `profiles`, `item_images`, etc.). Only `group_members` has RLS (migration 07). The `visibility` column is currently decorative.
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
-- **Hand-rolled types**: `web/src/lib/types.ts` is manually maintained. No `supabase gen types typescript` run yet.
+- **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files.
 - ~~**Query key inconsistency**~~: item detail/edit now use `itemKeys.one(id)` = `['items', id]` everywhere. Fixed.
 - ~~**`get_user_email()` PII risk**~~ — fixed in migration 12; function now restricted to admin callers only.
 - `zod` installed but never used.
@@ -104,7 +104,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 1. **RLS hardening** — enable RLS on all public-schema tables; write reviewed policy set (derive from `supabase/archive-debug-scripts/rls-policies.sql`).
 3. **Migration chain cleanup** — reconcile into a clean sequential chain; fix migration 03 references to non-existent tables; make migration 11 idempotent; drop the broad-permission migration 08 policy.
 4. **Add `items.visibility` to `bootstrap.sql`** — or replace bootstrap entirely with the migration chain.
-5. **Generate Supabase types** — `supabase gen types typescript --linked > web/src/lib/database.types.ts`; wire into `createClient<Database>()`.
+5. ~~**Generate Supabase types**~~ ✅ Done
 6. ~~**Unify item query keys**~~ ✅ Done
 7. **Replace `alert()` with a toast component**.
 8. **Add top-level React error boundary** in `main.tsx`.
@@ -127,6 +127,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - **`web/package-lock.json`** regenerated with correct `"name": "circulate"`
 - **Restricted `get_user_email()` to admin users only** (migration 12) — closed live PII exposure where any authenticated user could resolve any UUID to an email address
 - **Unified item query keys** — `routes/Item.tsx`, `routes/ItemEdit.tsx`, and `features/admin-items/api.ts` all now use `itemKeys.one(id)` for detail queries and invalidations; typecheck and build passed clean
+- **Generated Supabase types** — `web/src/lib/database.types.ts` generated from production schema (`puapkkbheusncmglulfh`); `supabaseClient` now uses `createClient<Database>()`; typecheck and build passed. Schema notes: `items.visibility` is `string | null`; `user_in_item_groups()` already exists in DB (RLS Phase 2 helper is deployed); `item_tags`/`tags` tables exist but have no frontend usage
 
 ---
 
@@ -155,7 +156,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 2. **Verify admin flow end-to-end** in production: item detail, archive, delete, edit for another user's item.
 3. ~~**Unify item query keys**~~ ✅ Done
 4. ~~**RLS hardening — Phase 1 (remaining):**~~ ✅ Phase 1 complete — migration 03 fixed; production visibility audit done (all items are `public`, no unexpected values). See §9 for Phase 2 onwards.
-5. **Run `supabase gen types typescript`** and wire into the client to eliminate manual type drift.
+5. ~~**Run `supabase gen types typescript`**~~ ✅ Done — `web/src/lib/database.types.ts` generated; `supabaseClient` uses `createClient<Database>()`.
 
 ---
 

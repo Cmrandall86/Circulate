@@ -333,7 +333,7 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 ### 🟡 Frontend code quality
 
 1. ~~**Query-key inconsistency for items.**~~ — **Fixed.** All detail queries and invalidations now use `itemKeys.one(id)` = `['items', id]`.
-2. **Hand-rolled Supabase types.** `web/src/lib/types.ts` is manually maintained. `features/groups/types.ts` defines a parallel `Group` / `GroupMember` with a stricter `Role` union. `Item` in `lib/types.ts` does not include `visibility`, but `ItemForm` casts to access it. Generate types with `supabase gen types typescript` and wire them into `createClient<Database>()`.
+2. **Manual domain types remain.** Generated types are now wired (`web/src/lib/database.types.ts`, `createClient<Database>()`). Hand-written domain types in `lib/types.ts` and feature `types.ts` files still exist and should be gradually reconciled: `Item` is missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` are duplicated across files with slight shape differences.
 3. **`zod` is installed but never imported.** Either adopt it for form validation (recommended) or remove the dependency.
 4. **`eslint.config.js` is orphaned.** No `eslint` or plugin packages in `web/package.json` and no `lint` script. The config currently does nothing.
 5. **No `typecheck` script.** `tsc --noEmit` would catch the type-drift issues above. Add `"typecheck": "tsc --noEmit"` to `web/package.json`.
@@ -369,7 +369,7 @@ Concrete, mechanical tasks. Mostly safe and quick. Suitable for a "cleanup" PR b
 - [ ] **Either commit to ESLint or remove the orphan config** — add the deps + a `lint` script in `web/package.json`, or delete `eslint.config.js`.
 - [x] **Add `typecheck` script:** `"typecheck": "tsc --noEmit"` in `web/package.json`. ✅ Done
 - [ ] **Remove unused `zod` dependency** or start using it (recommend the latter).
-- [ ] **Generate Supabase types** (`supabase gen types typescript --linked > web/src/lib/database.types.ts`) and wire into `createClient`.
+- [x] **Generate Supabase types** — `web/src/lib/database.types.ts` generated; `createClient<Database>()` wired. ✅ Done
 - [ ] **Unify `Group`/`GroupMember` type definitions** (`lib/types.ts` vs `features/groups/types.ts`).
 - [x] **Unify item query keys** under `itemKeys`. ✅ Done
 - [ ] **Replace `alert()` with a toast component**.
