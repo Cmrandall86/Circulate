@@ -16,6 +16,7 @@ import ResetPassword from './routes/ResetPassword'
 import AdminUsers from './routes/admin/Users'
 import AuthGate from '@/components/AuthGate'
 import AdminGate from '@/components/AdminGate'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { AuthProvider } from '@/hooks/useAuth' // ⬅️ add this
 
 const rootRoute = createRootRouteWithContext<{}>()({
@@ -105,7 +106,9 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={qc}>
       <AuthProvider> {/* ⬅️ wrap the entire app so AdminGate shares auth + cache */}
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>
