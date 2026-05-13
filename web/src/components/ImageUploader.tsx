@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { toast } from 'sonner'
 import { compress } from '../lib/image'
 import Button from './ui/Button'
 import type { ImageFile } from '@/features/items/types'
@@ -18,7 +19,7 @@ export default function ImageUploader({ images, onChange, onRemove, maxFiles = 5
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
     if (images.length + selectedFiles.length > maxFiles) {
-      alert(`Maximum ${maxFiles} files allowed`)
+      toast.error(`Maximum ${maxFiles} files allowed`)
       return
     }
 
@@ -34,7 +35,7 @@ export default function ImageUploader({ images, onChange, onRemove, maxFiles = 5
       onChange([...images, ...newImages])
     } catch (error) {
       console.error('Error compressing images:', error)
-      alert('Failed to process images')
+      toast.error('Failed to process images')
     } finally {
       setUploading(false)
     }

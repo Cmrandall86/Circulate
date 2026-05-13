@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -79,7 +80,7 @@ export default function SignIn() {
       if (resetError) throw resetError
 
       setError(null)
-      alert('Password reset email sent! Check your inbox.')
+      toast.success('Password reset email sent! Check your inbox.')
     } catch (err: any) {
       setError(err.message || 'Failed to send reset email')
     }

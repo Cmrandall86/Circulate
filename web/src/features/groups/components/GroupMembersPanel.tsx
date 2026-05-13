@@ -29,7 +29,6 @@ export default function GroupMembersPanel({ groupId }: { groupId: string }) {
       await leave.mutateAsync()
     } catch (err: any) {
       console.error('Failed to leave group:', err)
-      alert(err.message || 'Failed to leave group')
     }
   }
 
@@ -38,7 +37,6 @@ export default function GroupMembersPanel({ groupId }: { groupId: string }) {
       await remove.mutateAsync(userId)
     } catch (err: any) {
       console.error('Failed to remove member:', err)
-      alert(err.message || 'Failed to remove member')
     }
   }
 
@@ -47,7 +45,6 @@ export default function GroupMembersPanel({ groupId }: { groupId: string }) {
       await updateRole.mutateAsync({ userId, role: newRole })
     } catch (err: any) {
       console.error('Failed to update role:', err)
-      alert(err.message || 'Failed to update role')
     }
   }
 

@@ -339,7 +339,7 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 5. **No `typecheck` script.** `tsc --noEmit` would catch the type-drift issues above. Add `"typecheck": "tsc --noEmit"` to `web/package.json`.
 6. **No automated tests.** `.gitignore` reserves `coverage/` but no test runner is installed and no `*.test.*` / `*.spec.*` files exist.
 7. **No React error boundary.** `AuthGate` and `AdminGate` render `null` while loading, producing a blank screen on slow auth resolution.
-8. **`alert()` is used for user-visible errors** in several places (auth and group flows). Replace with toast notifications.
+8. ~~**`alert()` is used for user-visible errors** in several places (auth and group flows). Replace with toast notifications.~~ ✅ Done (`sonner`)
 9. **`console.error` / `console.warn` / `console.debug` are scattered through the codebase** — fine for development, but a logger abstraction with environment gating would be cleaner.
 10. **`UserSearchInput.tsx` has dead props.** `groupId` is accepted but never used in the component body, and `excludedEmails` is documented but never applied to the filter.
 11. **`useRemoveMember`** checks whether the group has any owner, not whether the *target* being removed is the sole owner. A non-owner could in principle slip through this check; verify and add explicit "target is not the last owner" logic.
@@ -372,7 +372,7 @@ Concrete, mechanical tasks. Mostly safe and quick. Suitable for a "cleanup" PR b
 - [x] **Generate Supabase types** — `web/src/lib/database.types.ts` generated; `createClient<Database>()` wired. ✅ Done
 - [ ] **Unify `Group`/`GroupMember` type definitions** (`lib/types.ts` vs `features/groups/types.ts`).
 - [x] **Unify item query keys** under `itemKeys`. ✅ Done
-- [ ] **Replace `alert()` with a toast component**.
+- [x] **Replace `alert()` with a toast component** (`sonner`). ✅ Done
 - [ ] **Add a top-level React error boundary** in `main.tsx`.
 - [ ] **Reconcile migrations** into a clean sequential chain (`01_schema.sql`, `02_triggers.sql`, `03_rls.sql`, `04_storage.sql`, …). Promote the consolidated RLS story from `archive-debug-scripts/rls-policies.sql` into a real migration, *after* review and removal of overly permissive `profiles` policies.
 - [ ] **Add the `items.visibility` column to `bootstrap.sql`** (or, better, replace bootstrap with the migration chain entirely).

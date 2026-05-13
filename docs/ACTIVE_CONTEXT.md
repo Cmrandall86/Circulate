@@ -106,7 +106,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 4. **Add `items.visibility` to `bootstrap.sql`** — or replace bootstrap entirely with the migration chain.
 5. ~~**Generate Supabase types**~~ ✅ Done
 6. ~~**Unify item query keys**~~ ✅ Done
-7. **Replace `alert()` with a toast component**.
+7. ~~**Replace `alert()` with a toast component**~~ ✅ Done
 8. **Add top-level React error boundary** in `main.tsx`.
 9. **ESLint** — either add deps + `lint` script or delete `eslint.config.js`.
 
@@ -127,6 +127,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - **`web/package-lock.json`** regenerated with correct `"name": "circulate"`
 - **Restricted `get_user_email()` to admin users only** (migration 12) — closed live PII exposure where any authenticated user could resolve any UUID to an email address
 - **Unified item query keys** — `routes/Item.tsx`, `routes/ItemEdit.tsx`, and `features/admin-items/api.ts` all now use `itemKeys.one(id)` for detail queries and invalidations; typecheck and build passed clean
+- **Replaced all `alert()` calls with sonner toasts** — added `sonner` dependency; `<Toaster position="bottom-right" richColors />` mounted in `Root.tsx`; `toast.success`/`toast.error`/`toast` replace alerts in `SignIn.tsx`, `SignUp.tsx`, `ImageUploader.tsx`; redundant alerts removed from `GroupMembersPanel.tsx` (inline error UI retained); typecheck and build passed clean
 - **Generated Supabase types** — `web/src/lib/database.types.ts` generated from production schema (`puapkkbheusncmglulfh`); `supabaseClient` now uses `createClient<Database>()`; typecheck and build passed. Schema notes: `items.visibility` is `string | null`; `user_in_item_groups()` already exists in DB (RLS Phase 2 helper is deployed); `item_tags`/`tags` tables exist but have no frontend usage
 
 ---

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -45,7 +46,7 @@ export default function SignUp() {
       // If email confirmation is required, show message
       if (data.user && !data.session) {
         setError(null)
-        alert('Please check your email to confirm your account before signing in.')
+        toast('Please check your email to confirm your account before signing in.')
         navigate({ to: '/signin' })
         return
       }
