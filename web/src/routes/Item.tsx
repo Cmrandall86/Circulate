@@ -113,7 +113,7 @@ export default function ItemDetail() {
           </div>
         )}
 
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <h1 className="text-3xl font-bold text-ink-400">{item.title}</h1>
             {isAlreadyArchived && (
@@ -122,23 +122,11 @@ export default function ItemDetail() {
           </div>
 
           {canModerate && (
-            <div className="flex gap-2 shrink-0 ml-4">
+            <div className="flex gap-2 shrink-0">
               {/* Edit — available to owner and admin */}
               <Link to={`/item/${id}/edit`}>
                 <Button variant="secondary">Edit</Button>
               </Link>
-
-              {/* Archive — admin action; soft removes without deleting images */}
-              {isAdmin && (
-                <Button
-                  variant="secondary"
-                  disabled={isAlreadyArchived || isMutating}
-                  onClick={() => setConfirmAction('archive')}
-                  title={isAlreadyArchived ? 'Already archived' : 'Archive this item'}
-                >
-                  Archive
-                </Button>
-              )}
 
               {/* Delete */}
               <Button
