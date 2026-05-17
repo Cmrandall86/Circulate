@@ -1,5 +1,13 @@
 # Groups Membership & Invitations
 
+> ⚠️ **Historical / aspirational design reference only.**
+> This document describes a planned Groups system that is **partially implemented**.
+> The core group and membership flows (create, join, leave, member roles) are live.
+> **Invitation and join-request features are not implemented.** The `group_invitations`
+> and `group_join_requests` tables **do not exist** in the current production schema.
+> Do not rely on sections below that describe invite-only flows, invitation tokens,
+> or join requests as a description of current production behaviour.
+
 This document describes the Groups membership and invitation system implemented in Circulate.
 
 ## Overview

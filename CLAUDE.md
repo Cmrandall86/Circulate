@@ -10,7 +10,7 @@ For engineering working memory and current priorities, also read `docs/ACTIVE_CO
 A private-first community item-sharing platform. Users post items they want to give away, control who can see them (public or specific groups/circles), and browse what others are offering. No marketplace mechanics — no payments, no shipping. Community trust model.
 
 - **Production URL:** https://use-circulate.netlify.app
-- **GitHub repo:** `Cmrandall86/Stuff-Cycler` (not yet renamed on GitHub)
+- **GitHub repo:** `Cmrandall86/Circulate`
 
 ---
 
@@ -137,7 +137,7 @@ Full RLS phased plan is in `docs/RLS_HARDENING_PLAN.md`.
 
 ## Session Startup Checklist
 
-For any non-trivial session, read:
+For any non-trivial session, read in this order:
 1. `CLAUDE.md` (this file) — always
 2. `docs/ACTIVE_CONTEXT.md` — always
-3. `docs/RLS_HARDENING_PLAN.md` — only when doing RLS/migration work
+3. Task-specific docs only when relevant (e.g. `docs/RLS_HARDENING_PLAN.md` for RLS/migration work)

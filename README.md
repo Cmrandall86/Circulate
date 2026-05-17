@@ -97,8 +97,7 @@ Circulate/
 │       ├── hooks/                         # useAuth, useRole, useFeed
 │       ├── lib/                           # supabaseClient, types, image, bootstrapUser
 │       ├── theme/tokens.css               # CSS variables
-│       ├── App.css / index.css
-│       └── mcp/                           # ⚠️ Aspirational planning notes (PLAN.md, SUPABASE_ARCHIVE.md)
+│       └── App.css / index.css
 └── supabase/
     ├── config.toml                        # Local CLI config (no [auth] block)
     ├── bootstrap.sql                      # Tables, profile trigger, role helpers, get_my_role
@@ -134,12 +133,12 @@ Circulate/
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/Cmrandall86/Stuff-Cycler.git Circulate
+git clone https://github.com/Cmrandall86/Circulate.git Circulate
 cd Circulate/web
 npm install
 ```
 
-> Note: The GitHub repository is still hosted at `Cmrandall86/Stuff-Cycler`. The `Circulate` argument above renames the cloned folder locally to match the current project name.
+> Note: The GitHub repository is `Cmrandall86/Circulate`.
 
 > Note: All Node tooling lives under `web/`. There is no `package.json` at the repo root.
 
@@ -256,7 +255,7 @@ Visit `http://localhost:5173`.
 
 ## Deployment (Netlify)
 
-- **Repo:** GitHub `Cmrandall86/Stuff-Cycler` (repository not yet renamed; project name is Circulate)
+- **Repo:** GitHub `Cmrandall86/Circulate`
 - **Deploys from:** `main` branch
 - **Site base directory:** `web` ← **must be set in Netlify UI**, because `netlify.toml` lives at `web/netlify.toml`, not the repo root.
 - **Build command:** `npm run build`
@@ -363,7 +362,7 @@ Concrete, mechanical tasks. Mostly safe and quick. Suitable for a "cleanup" PR b
 
 - [ ] **Delete or rewrite `web/README.md`** (currently the default Vite template).
 - [x] **Delete `web/stuff_cycler_starter_kit_scaffold_sql_rls_notes.md`** (stale, misleading). ✅ Done
-- [ ] **Delete `web/src/mcp/`** or move to `docs/proposals/` (it is aspirational planning, not runtime code).
+- [x] **Delete `web/src/mcp/`** (aspirational planning notes — deleted). ✅ Done
 - [ ] **Fix `web/index.html`** — set a real title and favicon, or remove the icon link.
 - [x] **Remove root-level `package-lock.json`** (there is no root `package.json`). ✅ Done
 - [ ] **Either commit to ESLint or remove the orphan config** — add the deps + a `lint` script in `web/package.json`, or delete `eslint.config.js`.

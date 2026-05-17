@@ -13,7 +13,7 @@ Last updated: May 2026
 | `docs/ACTIVE_CONTEXT.md` ← **this file** | Primary startup context for all future Cursor sessions |
 | `docs/RLS_HARDENING_PLAN.md` | Archival / reference only — consulted when actively implementing RLS phases, not needed at session start |
 
-> **For future sessions:** load `CLAUDE.md` + `docs/ACTIVE_CONTEXT.md`. Fetch `docs/RLS_HARDENING_PLAN.md` only when executing RLS work.
+> **For future sessions:** read `CLAUDE.md` first, then `docs/ACTIVE_CONTEXT.md`. Fetch task-specific docs (e.g. `docs/RLS_HARDENING_PLAN.md`) only when relevant.
 
 ---
 
@@ -25,7 +25,7 @@ Last updated: May 2026
 - Sharing model: items are `public` (anyone) or `groups` (members of selected groups only)
 - No marketplace mechanics yet — no payments, no shipping, community trust model
 - Production URL: **https://use-circulate.netlify.app**
-- GitHub repo: `Cmrandall86/Stuff-Cycler` (repo not yet renamed on GitHub)
+- GitHub repo: `Cmrandall86/Circulate`
 
 ---
 
@@ -115,7 +115,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ## 6. Recent Major Changes (this session)
 
-- **Renamed Stuff Cycler → Circulate** across all code, docs, and package metadata. GitHub repo name unchanged (still `Cmrandall86/Stuff-Cycler`); clone instructions note this.
+- **Renamed Stuff Cycler → Circulate** across all code, docs, and package metadata. GitHub repo renamed to `Cmrandall86/Circulate`.
 - **Migrated to a new Supabase project** (old free-tier expired). Google and Discord OAuth reconfigured and working. Images and data displaying correctly.
 - **Added admin item moderation** integrated into normal app flows:
   - `/item/$id` — admins see Archive + Delete controls with modal confirmation; admin notice shown for other users' items
@@ -151,13 +151,8 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ## 8. Immediate Next Steps
 
-1. **Deploy `admin-items`** (required before admin item detail/edit works in production):
-   ```
-   supabase link --project-ref <ref>
-   supabase functions deploy admin-items
-   supabase secrets set SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... ALLOW_ORIGINS=http://localhost:5173,https://use-circulate.netlify.app
-   ```
-2. **Verify admin flow end-to-end** in production: item detail, archive, delete, edit for another user's item.
+1. ~~**Deploy `admin-items`**~~ ✅ Deployed — admin item detail, archive, edit, and delete flows are operational on https://use-circulate.netlify.app
+2. **Verify admin flows end-to-end** in production: item detail, archive, delete, and edit for another user's item. Confirm Edge Function secrets are current.
 3. ~~**Unify item query keys**~~ ✅ Done
 4. ~~**RLS hardening — Phase 1 (remaining):**~~ ✅ Phase 1 complete — migration 03 fixed; production visibility audit done (all items are `public`, no unexpected values). See §9 for Phase 2 onwards.
 5. ~~**Run `supabase gen types typescript`**~~ ✅ Done — `web/src/lib/database.types.ts` generated; `supabaseClient` uses `createClient<Database>()`.
@@ -202,7 +197,7 @@ This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` 
 | 1 | ~~Restrict `get_user_email()` to admin only~~ (migration 12) | ✅ Done |
 | 1 | ~~Fix migration 03 — remove broken index lines for non-existent tables~~ | ✅ Done |
 | 1 | ~~Audit `items.visibility` distribution in production~~ — all rows are `public`, no nulls | ✅ Done |
-| 2 | Create `public.user_in_item_groups()` SECURITY DEFINER helper | Pending |
+| 2 | Create `public.user_in_item_groups()` SECURITY DEFINER helper | ⚠️ **Function already exists in production.** Verify its definition matches the spec in `docs/RLS_HARDENING_PLAN.md` and record it as a migration before writing any new helper. |
 | 3 | Enable RLS on `items`, `profiles`, `groups` | Pending |
 | 4 | Enable RLS on `item_visibility_groups`, `item_images`; audit `group_members` policy | Pending |
 | 5 | Fix `useDeleteImage` admin path for RLS compatibility | Pending |
