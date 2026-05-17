@@ -15,16 +15,16 @@ export default function ItemCard({ item }: ItemCardProps) {
     <Link to="/item/$id" params={{ id: item.id }}>
       <Card className="p-4 hover:border-mint-400 transition-colors cursor-pointer">
         {imageUrl ? (
-          <div className="w-full h-48 bg-base-700 rounded-lg mb-4 overflow-hidden">
+          <div className="w-full aspect-[4/5] bg-base-700 rounded-lg mb-4 overflow-hidden flex items-center justify-center">
             <img
               src={imageUrl}
               alt={item.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain object-center"
               loading="lazy"
             />
           </div>
         ) : (
-          <div className="w-full h-48 bg-base-700 rounded-lg mb-4 flex items-center justify-center">
+          <div className="w-full aspect-[4/5] bg-base-700 rounded-lg mb-4 flex items-center justify-center">
             <span className="text-ink-600 text-sm">No image</span>
           </div>
         )}
