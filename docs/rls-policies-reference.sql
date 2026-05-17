@@ -1,3 +1,11 @@
+-- rls-policies-reference.sql
+-- Reference script for Phase 2+ RLS hardening work.
+-- DO NOT run this directly against production without review.
+-- See docs/RLS_HARDENING_PLAN.md for the phased rollout plan.
+-- Key note: the items_select_policy below joins item_visibility_groups → group_members directly,
+-- which caused the recursion loop in prior attempts. Future implementation must use the
+-- SECURITY DEFINER helper function user_in_item_groups() instead. See RLS_HARDENING_PLAN.md §Critical.
+
 alter table groups enable row level security;
 alter table group_members enable row level security;
 alter table items enable row level security;
@@ -227,4 +235,3 @@ create policy "profiles admin all"
 on profiles for all
 using ( exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin') )
 with check ( exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin') );
-

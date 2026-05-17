@@ -8,11 +8,12 @@ Last updated: May 2026
 
 | Document | Role |
 |---|---|
+| `CLAUDE.md` | AI agent context document — read every session |
 | `README.md` | Authoritative project reference (stack, schema, known issues, roadmap) |
 | `docs/ACTIVE_CONTEXT.md` ← **this file** | Primary startup context for all future Cursor sessions |
 | `docs/RLS_HARDENING_PLAN.md` | Archival / reference only — consulted when actively implementing RLS phases, not needed at session start |
 
-> **For future sessions:** load `README.md` + `ACTIVE_CONTEXT.md`. Fetch `RLS_HARDENING_PLAN.md` only when executing RLS work.
+> **For future sessions:** load `CLAUDE.md` + `docs/ACTIVE_CONTEXT.md`. Fetch `docs/RLS_HARDENING_PLAN.md` only when executing RLS work.
 
 ---
 
@@ -94,14 +95,14 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - No `typecheck` script was missing (now added: `"typecheck": "tsc --noEmit"`).
 - `eslint.config.js` is orphaned — no ESLint packages in `package.json`.
 - No test runner. ~~No error boundary~~ ✅. ~~`alert()` still used in several flows~~ ✅.
-- `web/README.md` is still the default Vite template.
-- `send-group-invitation` Edge Function is documented in `supabase/README.md` but does not exist.
+- ~~`web/README.md` is still the default Vite template.~~ ✅ Deleted.
+- `send-group-invitation` Edge Function is documented in `docs/supabase-overview.md` but does not exist.
 
 ---
 
 ## 5. Current Active Priorities (ordered)
 
-1. **RLS hardening** — enable RLS on all public-schema tables; write reviewed policy set (derive from `supabase/archive-debug-scripts/rls-policies.sql`).
+1. **RLS hardening** — enable RLS on all public-schema tables; write reviewed policy set (derive from `docs/rls-policies-reference.sql`).
 3. **Migration chain cleanup** — reconcile into a clean sequential chain; fix migration 03 references to non-existent tables; make migration 11 idempotent; drop the broad-permission migration 08 policy.
 4. **Add `items.visibility` to `bootstrap.sql`** — or replace bootstrap entirely with the migration chain.
 5. ~~**Generate Supabase types**~~ ✅ Done
@@ -128,6 +129,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - **Restricted `get_user_email()` to admin users only** (migration 12) — closed live PII exposure where any authenticated user could resolve any UUID to an email address
 - **Unified item query keys** — `routes/Item.tsx`, `routes/ItemEdit.tsx`, and `features/admin-items/api.ts` all now use `itemKeys.one(id)` for detail queries and invalidations; typecheck and build passed clean
 - **Added top-level `ErrorBoundary`** around `RouterProvider` in `main.tsx` — branded fallback UI prevents blank screens from any route/render crash; errors logged via `console.error`; typecheck and build passed clean
+- **Repo cleanup and CLAUDE.md created** — `CLAUDE.md` added at repo root as canonical AI agent context doc; `supabase/` MD files moved to `docs/` (`supabase-overview.md`, `deploy-edge-functions.md`, `storage-buckets.md`); `rls-policies-reference.sql` and `TEMP-DISABLE-RLS.sql` preserved in `docs/`; `archive-debug-scripts/` deleted; `web/README.md` and `web/src/mcp/` deleted; cross-references updated throughout
 - **Replaced all `alert()` calls with sonner toasts** — added `sonner` dependency; `<Toaster position="bottom-right" richColors />` mounted in `Root.tsx`; `toast.success`/`toast.error`/`toast` replace alerts in `SignIn.tsx`, `SignUp.tsx`, `ImageUploader.tsx`; redundant alerts removed from `GroupMembersPanel.tsx` (inline error UI retained); typecheck and build passed clean
 - **Generated Supabase types** — `web/src/lib/database.types.ts` generated from production schema (`puapkkbheusncmglulfh`); `supabaseClient` now uses `createClient<Database>()`; typecheck and build passed. Schema notes: `items.visibility` is `string | null`; `user_in_item_groups()` already exists in DB (RLS Phase 2 helper is deployed); `item_tags`/`tags` tables exist but have no frontend usage
 
@@ -180,7 +182,7 @@ Multiple past RLS attempts failed due to a **recursion loop**:
 items → item_visibility_groups → group_members → items
 ```
 
-This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` nuclear rollback was used each time. All attempts are preserved in `supabase/archive-debug-scripts/` (reference only — do not re-apply).
+This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` nuclear rollback was used each time. All attempts are preserved in `docs/` (`rls-policies-reference.sql`, `TEMP-DISABLE-RLS.sql`) for reference.
 
 ### Critical Architectural Requirement: Recursion-Safe Helper
 
@@ -205,7 +207,7 @@ This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` 
 | 4 | Enable RLS on `item_visibility_groups`, `item_images`; audit `group_members` policy | Pending |
 | 5 | Fix `useDeleteImage` admin path for RLS compatibility | Pending |
 
-**Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `TEMP-DISABLE-RLS.sql` accessible through Phase 4 as a rollback option.
+**Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `docs/TEMP-DISABLE-RLS.sql` accessible through Phase 4 as a rollback option.
 
 ---
 

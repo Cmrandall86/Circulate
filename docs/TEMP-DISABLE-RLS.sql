@@ -1,6 +1,7 @@
--- TEMPORARY RLS BYPASS FOR TESTING
--- WARNING: This disables security - ONLY for debugging!
--- DO NOT LEAVE THIS DISABLED IN PRODUCTION
+-- TEMP-DISABLE-RLS.sql
+-- Emergency RLS rollback script. Keep accessible through Phase 4 of RLS hardening.
+-- WARNING: Disables security. ONLY use for debugging or emergency rollback.
+-- DO NOT leave RLS disabled in production.
 
 -- ============================================================
 -- STEP 1: Disable RLS on items table
@@ -68,7 +69,7 @@ LIMIT 5;
 /*
 If queries work after disabling RLS:
   → The problem is definitely in the RLS policies
-  → Proceed to NUCLEAR-RESET-POLICIES.sql
+  → Proceed to rls-policies-reference.sql (docs/) or write a new migration
 
 If queries still fail after disabling RLS:
   → The problem is NOT RLS
@@ -78,4 +79,3 @@ If queries still fail after disabling RLS:
     - Database connection issues
     - Foreign key constraints
 */
-

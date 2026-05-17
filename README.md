@@ -100,24 +100,24 @@ Circulate/
 │       ├── App.css / index.css
 │       └── mcp/                           # ⚠️ Aspirational planning notes (PLAN.md, SUPABASE_ARCHIVE.md)
 └── supabase/
-    ├── README.md
     ├── config.toml                        # Local CLI config (no [auth] block)
     ├── bootstrap.sql                      # Tables, profile trigger, role helpers, get_my_role
     ├── backfill-profiles.sql              # One-off utility
-    ├── DEPLOY_EDGE_FUNCTION.md
-    ├── storage-buckets.md
     ├── functions/
-    │   └── admin-users/                   # Only edge function that actually exists
+    │   ├── admin-users/                   # User management Edge Function
+    │   │   ├── index.ts
+    │   │   └── deno.json
+    │   └── admin-items/                   # Item moderation Edge Function
     │       ├── index.ts
     │       └── deno.json
-    ├── migrations/                        # ⚠️ Non-sequential numbering, see Known Issues
-    │   ├── 03_indexes_and_constraints.sql
-    │   ├── 06_trigger_add_owner.sql
-    │   ├── 07_policies_group_members.sql
-    │   ├── 08_storage_policies_images.sql # Old, broad-permission set
-    │   ├── 10_get_user_email_function.sql # ⚠️ Restricted to admin only via migration 12
-    │   └── 11_storage_policies_images.sql # Newer, item-scoped set
-    └── archive-debug-scripts/             # Historical fix scripts, reference only
+    └── migrations/                        # ⚠️ Non-sequential numbering, see Known Issues
+        ├── 03_indexes_and_constraints.sql
+        ├── 06_trigger_add_owner.sql
+        ├── 07_policies_group_members.sql
+        ├── 08_storage_policies_images.sql # Old, broad-permission set
+        ├── 10_get_user_email_function.sql # ⚠️ Restricted to admin only via migration 12
+        ├── 11_storage_policies_images.sql # Newer, item-scoped set
+        └── 12_restrict_get_user_email.sql
 ```
 
 ---
@@ -141,7 +141,7 @@ npm install
 
 > Note: The GitHub repository is still hosted at `Cmrandall86/Stuff-Cycler`. The `Circulate` argument above renames the cloned folder locally to match the current project name.
 
-> Note: All Node tooling lives under `web/`. There is no `package.json` at the repo root (only a stray `package-lock.json` — see [Cleanup Backlog](#cleanup-backlog)).
+> Note: All Node tooling lives under `web/`. There is no `package.json` at the repo root.
 
 ### 2. Environment variables
 
@@ -211,7 +211,7 @@ supabase secrets set \
   ALLOW_ORIGINS=http://localhost:5173,https://your-site.netlify.app
 ```
 
-> The root README has historically omitted `SUPABASE_ANON_KEY` and `ALLOW_ORIGINS`, but both are required. See `supabase/DEPLOY_EDGE_FUNCTION.md` for full detail.
+> The root README has historically omitted `SUPABASE_ANON_KEY` and `ALLOW_ORIGINS`, but both are required. See `docs/deploy-edge-functions.md` for full detail.
 
 ### 7. Promote yourself to admin
 
@@ -317,10 +317,10 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 1. **`items.visibility` column is missing from `bootstrap.sql`** but is referenced by the frontend (every item create/update writes it), by migration `11_storage_policies_images.sql`, and by most archive RLS scripts.
 2. ~~**Migration `03_indexes_and_constraints.sql` references tables that do not exist**~~ — **Fixed.** Ghost-table index references removed; only `group_members` indexes remain.
 3. **Migrations `08` and `11` for storage are contradictory.** `08` grants anon SELECT on the entire bucket; `11` enforces item-scoped reads for authenticated users. Both have different policy names so they accumulate rather than replace, which means if both are applied the broad-permission `08` policy wins via the OR semantics of multiple permissive policies.
-4. **Bootstrap claims RLS, but does not enable it.** `bootstrap.sql` contains zero `enable row level security` or `create policy` statements. The only public-schema RLS that ships through migrations is on `group_members` (file `07`). `groups`, `items`, `item_images`, `item_visibility_groups`, `interests`, `reservations`, and `profiles` are **unprotected by RLS** out of the box. The full RLS picture exists in `supabase/archive-debug-scripts/rls-policies.sql` but is explicitly marked reference-only.
+4. **Bootstrap claims RLS, but does not enable it.** `bootstrap.sql` contains zero `enable row level security` or `create policy` statements. The only public-schema RLS that ships through migrations is on `group_members` (file `07`). `groups`, `items`, `item_images`, `item_visibility_groups`, `interests`, `reservations`, and `profiles` are **unprotected by RLS** out of the box. The full RLS picture exists in `docs/rls-policies-reference.sql` but is explicitly marked reference-only.
 5. **Migration numbering has gaps**: 03, 06, 07, 08, 10, 11. Missing 01, 02, 04, 05, 09. Either renumber as a clean `01_…` sequence (and version-stamp `bootstrap.sql`) or rebuild the chain.
 6. **Migration `11` is not idempotent** — it `create policy` without first dropping by name. Second run fails.
-7. **`send-group-invitation` Edge Function is documented in `supabase/README.md` but does not exist on disk.** Either implement it or remove from docs.
+7. **`send-group-invitation` Edge Function is documented in `docs/supabase-overview.md` but does not exist on disk.** Either implement it or remove from docs.
 
 ### 🔴 Security concerns
 
@@ -351,7 +351,7 @@ This is enforced (intended to be enforced) by Postgres RLS for the rows, and by 
 - The current root README points to `08_storage_policies_images.sql` for storage policies. `docs/IMAGE_*` and the implementation actually depend on `11_storage_policies_images.sql`. (Fixed in this rewrite.)
 - The root README's Edge Function setup omits `SUPABASE_ANON_KEY` and `ALLOW_ORIGINS`. (Fixed in this rewrite.)
 - The Netlify base-directory requirement was never documented. (Fixed in this rewrite.)
-- `supabase/README.md` lists a `send-group-invitation` function that does not exist.
+- `docs/supabase-overview.md` lists a `send-group-invitation` function that does not exist.
 - `web/stuff_cycler_starter_kit_scaffold_sql_rls_notes.md` was a stale starter-kit scaffold doc with contradictory table names. **Deleted.**
 - `web/README.md` is the default Vite + React template.
 
@@ -374,9 +374,9 @@ Concrete, mechanical tasks. Mostly safe and quick. Suitable for a "cleanup" PR b
 - [x] **Unify item query keys** under `itemKeys`. ✅ Done
 - [x] **Replace `alert()` with a toast component** (`sonner`). ✅ Done
 - [x] **Add a top-level React error boundary** in `main.tsx`. ✅ Done
-- [ ] **Reconcile migrations** into a clean sequential chain (`01_schema.sql`, `02_triggers.sql`, `03_rls.sql`, `04_storage.sql`, …). Promote the consolidated RLS story from `archive-debug-scripts/rls-policies.sql` into a real migration, *after* review and removal of overly permissive `profiles` policies.
+- [ ] **Reconcile migrations** into a clean sequential chain (`01_schema.sql`, `02_triggers.sql`, `03_rls.sql`, `04_storage.sql`, …). Promote the consolidated RLS story from `docs/rls-policies-reference.sql` into a real migration, *after* review and removal of overly permissive `profiles` policies.
 - [ ] **Add the `items.visibility` column to `bootstrap.sql`** (or, better, replace bootstrap with the migration chain entirely).
-- [ ] **Remove or implement `send-group-invitation`** referenced in `supabase/README.md`.
+- [ ] **Remove or implement `send-group-invitation`** referenced in `docs/supabase-overview.md`.
 - [x] **Tighten `get_user_email`** — restricted to admin callers only (migration 12). ✅ Done
 - [ ] **Drop migration `08` storage policy set** (keep only `11`).
 - [ ] **Pin `search_path`** on all `SECURITY DEFINER` functions.
@@ -391,7 +391,7 @@ Organized in tiers from "necessary to call this a real product" → "differentia
 
 These overlap with [Known Issues](#known-issues--technical-debt) but are listed here for planning.
 
-1. **RLS hardening.** Enable RLS on every public-schema table and write a reviewed policy set. Single migration, derived from `archive-debug-scripts/rls-policies.sql` but with `profiles` SELECT tightened (don't expose all profile rows to anonymous), `INSERT` not `with check (true)`, etc.
+1. **RLS hardening.** Enable RLS on every public-schema table and write a reviewed policy set. Single migration, derived from `docs/rls-policies-reference.sql` but with `profiles` SELECT tightened (don't expose all profile rows to anonymous), `INSERT` not `with check (true)`, etc.
 2. **Migration chain rebuild.** Either: (a) make `bootstrap.sql` the single source of truth for v1 schema and renumber migrations from `01`, or (b) drop `bootstrap.sql` and rely on `supabase db push` against the migrations folder. Decide one model and document it.
 3. ~~**Email-lookup hardening**~~ — restricted to admin via migration 12. ✅ Done
 4. **Storage policy reconciliation** (delete `08`, keep `11` after making it idempotent).
@@ -439,13 +439,14 @@ These overlap with [Known Issues](#known-issues--technical-debt) but are listed 
 
 | Path | Purpose |
 |------|---------|
-| `supabase/README.md` | Backend overview (note: mentions a `send-group-invitation` function that doesn't exist) |
-| `supabase/DEPLOY_EDGE_FUNCTION.md` | Step-by-step deployment for `admin-users` |
-| `supabase/storage-buckets.md` | Storage bucket config and upload policy notes |
+| `docs/supabase-overview.md` | Backend overview (note: mentions a `send-group-invitation` function that doesn't exist) |
+| `docs/deploy-edge-functions.md` | Step-by-step deployment for `admin-users` and `admin-items` |
+| `docs/storage-buckets.md` | Storage bucket config and upload policy notes |
 | `docs/GROUPS_MEMBERSHIP.md` | Groups feature spec (invite-only vs open, roles, visibility) |
 | `docs/IMAGE_IMPLEMENTATION.md` | Image pipeline implementation summary |
 | `docs/IMAGE_DEPLOYMENT_CHECKLIST.md` | Pre/post deploy QA for image features |
-| `supabase/archive-debug-scripts/` | Historical fix-up SQL. Reference only. **Do not** run `TEMP-DISABLE-RLS.sql` or `NUCLEAR-*.sql` against shared databases. |
+| `docs/rls-policies-reference.sql` | Reference RLS policy set for Phase 2+ hardening work |
+| `docs/TEMP-DISABLE-RLS.sql` | Emergency RLS rollback script (keep accessible through Phase 4) |
 
 ---
 
