@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
@@ -6,35 +7,36 @@ import { useRole } from '@/hooks/useRole'
 export default function Navbar() {
   const { user } = useAuth()
   const { data: role } = useRole()
-  const isAdmin = role === 'admin' // role only loads when user exists, so no need for !!user check
+  const isAdmin = role === 'admin'
   const router = useRouterState()
   const currentPath = router.location.pathname
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  // Helper function to check if a path is active
   const isActive = (path: string) => {
-    if (path === '/') {
-      return currentPath === '/'
-    }
+    if (path === '/') return currentPath === '/'
     return currentPath.startsWith(path)
   }
+
+  const closeMenu = () => setMenuOpen(false)
 
   return (
     <div className="sticky top-0 z-10 border-b border-base-700 bg-base-800/80 backdrop-blur">
       <div className="container mx-auto flex items-center justify-between p-3">
-        <Link 
-          to="/" 
+        {/* Brand */}
+        <Link
+          to="/"
           className={`font-semibold ${isActive('/') ? 'text-mint-400' : 'text-mint-400/70 hover:text-mint-400'}`}
         >
           Circulate
         </Link>
-        <div className="flex items-center gap-3">
+
+        {/* ── Desktop nav (sm and up) ── */}
+        <div className="hidden sm:flex items-center gap-3">
           {user && (
-            <Link 
-              to="/groups" 
+            <Link
+              to="/groups"
               className={`transition-colors ${
-                isActive('/groups') 
-                  ? 'text-mint-400 font-medium' 
-                  : 'text-ink-600 hover:text-ink-400'
+                isActive('/groups') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
               }`}
             >
               Groups
@@ -44,9 +46,7 @@ export default function Navbar() {
             <Link
               to="/admin/users"
               className={`transition-colors ${
-                isActive('/admin/users')
-                  ? 'text-mint-400 font-medium'
-                  : 'text-ink-600 hover:text-ink-400'
+                isActive('/admin/users') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
               }`}
             >
               Admin
@@ -54,12 +54,10 @@ export default function Navbar() {
           )}
           {user ? (
             <>
-              <Link 
-                to="/new" 
+              <Link
+                to="/new"
                 className={`btn px-3 py-1.5 transition-colors ${
-                  isActive('/new') 
-                    ? 'btn-accent ring-2 ring-mint-400/50' 
-                    : 'btn-accent'
+                  isActive('/new') ? 'btn-accent ring-2 ring-mint-400/50' : 'btn-accent'
                 }`}
               >
                 New Item
@@ -73,21 +71,70 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link 
-                to="/signin" 
+              <Link
+                to="/signin"
                 className={`btn px-3 py-1.5 transition-colors ${
-                  isActive('/signin') 
-                    ? 'btn-accent ring-2 ring-mint-400/50' 
-                    : 'btn-accent'
+                  isActive('/signin') ? 'btn-accent ring-2 ring-mint-400/50' : 'btn-accent'
                 }`}
               >
                 Sign in
               </Link>
-              <Link 
-                to="/signup" 
+              <Link
+                to="/signup"
                 className={`px-3 py-1.5 rounded-2xl border transition-colors ${
-                  isActive('/signup') 
-                    ? 'border-mint-400/50 bg-base-700 text-mint-400' 
+                  isActive('/signup')
+                    ? 'border-mint-400/50 bg-base-700 text-mint-400'
+                    : 'border-base-600 hover:bg-base-700 text-ink-400'
+                }`}
+              >
+                Sign up
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* ── Mobile nav (below sm) ── */}
+        <div className="flex sm:hidden items-center gap-2">
+          {user ? (
+            <>
+              <Link
+                to="/new"
+                className={`btn px-3 py-1.5 transition-colors ${
+                  isActive('/new') ? 'btn-accent ring-2 ring-mint-400/50' : 'btn-accent'
+                }`}
+                onClick={closeMenu}
+              >
+                New Item
+              </Link>
+              {/* Hamburger button */}
+              <button
+                aria-label="Open menu"
+                aria-expanded={menuOpen}
+                className="p-2 rounded-lg text-ink-400 hover:text-ink-400 hover:bg-base-700 transition-colors"
+                onClick={() => setMenuOpen((o) => !o)}
+              >
+                <span className="flex flex-col gap-[5px] w-5">
+                  <span className="block h-0.5 w-full bg-current rounded" />
+                  <span className="block h-0.5 w-full bg-current rounded" />
+                  <span className="block h-0.5 w-full bg-current rounded" />
+                </span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/signin"
+                className={`btn px-3 py-1.5 transition-colors ${
+                  isActive('/signin') ? 'btn-accent ring-2 ring-mint-400/50' : 'btn-accent'
+                }`}
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/signup"
+                className={`px-3 py-1.5 rounded-2xl border transition-colors ${
+                  isActive('/signup')
+                    ? 'border-mint-400/50 bg-base-700 text-mint-400'
                     : 'border-base-600 hover:bg-base-700 text-ink-400'
                 }`}
               >
@@ -97,6 +144,38 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* ── Mobile dropdown menu ── */}
+      {menuOpen && user && (
+        <div className="sm:hidden border-t border-base-700 bg-base-800 px-4 py-2 flex flex-col gap-1">
+          <Link
+            to="/groups"
+            className={`py-3 px-2 rounded-lg transition-colors ${
+              isActive('/groups') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+            }`}
+            onClick={closeMenu}
+          >
+            Groups
+          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/users"
+              className={`py-3 px-2 rounded-lg transition-colors ${
+                isActive('/admin/users') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+              }`}
+              onClick={closeMenu}
+            >
+              Admin
+            </Link>
+          )}
+          <button
+            className="py-3 px-2 rounded-lg text-left text-ink-400 hover:bg-base-700 transition-colors"
+            onClick={() => { closeMenu(); supabase.auth.signOut() }}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
   )
 }
