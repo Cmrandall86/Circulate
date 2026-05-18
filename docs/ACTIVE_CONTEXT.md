@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 17, 2026
+Last updated: May 18, 2026
 
 ### Document Hierarchy
 
@@ -56,7 +56,7 @@ Last updated: May 17, 2026
 ### Edge Functions — narrow use only
 Two Edge Functions exist. Both verify the caller's JWT and check `profiles.role === 'admin'` before using service-role:
 
-- **`admin-users`** — user management (list, create, update, ban, hard delete)
+- **`admin-users`** — user management (list, create, update, disable/enable account, permanent delete). `DELETE` without `hard=true` bans the user; `DELETE?hard=true` permanently deletes. `PATCH` with `{ banned: false }` clears ban (`ban_duration: "none"`). Self disable/delete blocked server-side.
 - **`admin-items`** — item admin operations that RLS would otherwise block:
   - `GET /:id` — fetch any item + signed images (bypasses RLS)
   - `PATCH /:id { action: 'archive' }` — set `status = 'archived'`
@@ -135,6 +135,12 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
   - `web/public/apple-touch-icon.png` — 180×180 PNG for iOS home screen.
   - `web/index.html` — wired `<link rel="icon">`, `<link rel="apple-touch-icon">`, `<meta name="description">`, `<meta name="theme-color">`.
 
+### May 18 2026 session — mobile / admin UI polish (pre-RLS)
+- **Groups page (`/groups`)** — mobile-first layout polish: stacked page header and owner actions, improved member-row touch targets, `min-w-0` truncation. Accordion UX: groups collapsed by default, single-open expand, compact header (name, invite-only badge, member count, chevron). Expanded body shows description, owner actions, `GroupMembersPanel`. Auto-expands newly created group via `GroupCreateModal` `onCreated` callback.
+- **Admin Users page (`/admin/users`)** — responsive layout: mobile card list (`md:hidden`), desktop table (`md+`). Removed Status column and all "Active" badges; small red **Banned** badge only when `banned_until` is set.
+- **Admin account actions** — separate **Edit**, **Disable Account**, **Enable Account**, **Delete Permanently** with confirm modals. Delete is hard-delete only. Disable/enable hidden for the signed-in admin row. `admin-users` Edge Function: `PATCH` supports enable (`banned: false`); `DELETE` blocks self disable/delete.
+- **Commits:** `82f491d` (Groups), `4cb9734` (Admin Users + edge function). **Deploy `admin-users` Edge Function** before Enable Account works in production.
+
 ### Branding plan — remaining increments
 | Increment | Work | Status |
 |---|---|---|
@@ -165,9 +171,10 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 2. ~~**Unify item query keys**~~ ✅ Done
 3. ~~**RLS hardening Phase 1**~~ ✅ Done
 4. ~~**Generate Supabase types**~~ ✅ Done
-5. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
-6. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
-7. **RLS hardening Phase 2+** — verify `user_in_item_groups()` definition matches spec, then proceed with migration for `items`, `profiles`, `groups`.
+5. **Deploy `admin-users` Edge Function** — required for Enable Account after `4cb9734` (enable via `PATCH { banned: false }`).
+6. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
+7. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
+8. **RLS hardening Phase 2+** — verify `user_in_item_groups()` definition matches spec, then proceed with migration for `items`, `profiles`, `groups`.
 
 ---
 
