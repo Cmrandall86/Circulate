@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark rounded-square background -->
+  <rect width="32" height="32" rx="7" fill="#121416"/>
+  <!--
+    Mark: original viewBox is 24×24.
+    Scaled to 20×20 and centered in 32×32:
+      translate(6, 6) + scale(20/24 H 0.8333)
+    Stroke bumped from 1.75 ’ 2.5 so it survives 16px browser-tab rendering.
+  -->
+  <g transform="translate(6, 6) scale(0.8333)"
+     stroke="#49be8b" stroke-width="2.5" stroke-linecap="round" fill="none">
+    <path d="M20.5 12a8.5 8.5 0 1 1-6-8.12"/>
+    <circle cx="20.5" cy="5.2" r="1.6" fill="#49be8b" stroke="none"/>
+  </g>
+</svg>
