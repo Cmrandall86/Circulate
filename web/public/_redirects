@@ -1,1 +1,4 @@
-/*    /index.html   200
+# Serve the PNG favicon for browsers that autodiscover /favicon.ico
+# (Netlify's SPA catch-all would otherwise return index.html for missing paths)
+/favicon.ico    /favicon-32x32.png  200
+/*              /index.html         200
