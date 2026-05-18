@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 2026
+Last updated: May 17, 2026
 
 ### Document Hierarchy
 
@@ -113,25 +113,35 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ---
 
-## 6. Recent Major Changes (this session)
+## 6. Recent Major Changes
 
-- **Renamed Stuff Cycler → Circulate** across all code, docs, and package metadata. GitHub repo renamed to `Cmrandall86/Circulate`.
-- **Migrated to a new Supabase project** (old free-tier expired). Google and Discord OAuth reconfigured and working. Images and data displaying correctly.
-- **Added admin item moderation** integrated into normal app flows:
-  - `/item/$id` — admins see Archive + Delete controls with modal confirmation; admin notice shown for other users' items
-  - `/item/$id/edit` — admins can edit any item; admin notice shown; non-owner saves route through `admin-items` Edge Function
-  - Feed unchanged — no admin-specific feed path; normal query is sufficient since `items` has no RLS
-- **Added `admin-items` Edge Function** for privileged item operations (see §3)
-- **Deployed `admin-items` to production** — admin item detail, archive, edit (non-owned), and delete flows are operational on https://use-circulate.netlify.app
-- **Deleted stale files**: `web/stuff_cycler_starter_kit_scaffold_sql_rls_notes.md`, orphaned root `package-lock.json`
-- **Added `typecheck` script** to `web/package.json`
-- **`web/package-lock.json`** regenerated with correct `"name": "circulate"`
-- **Restricted `get_user_email()` to admin users only** (migration 12) — closed live PII exposure where any authenticated user could resolve any UUID to an email address
-- **Unified item query keys** — `routes/Item.tsx`, `routes/ItemEdit.tsx`, and `features/admin-items/api.ts` all now use `itemKeys.one(id)` for detail queries and invalidations; typecheck and build passed clean
-- **Added top-level `ErrorBoundary`** around `RouterProvider` in `main.tsx` — branded fallback UI prevents blank screens from any route/render crash; errors logged via `console.error`; typecheck and build passed clean
-- **Repo cleanup and CLAUDE.md created** — `CLAUDE.md` added at repo root as canonical AI agent context doc; `supabase/` MD files moved to `docs/` (`supabase-overview.md`, `deploy-edge-functions.md`, `storage-buckets.md`); `rls-policies-reference.sql` and `TEMP-DISABLE-RLS.sql` preserved in `docs/`; `archive-debug-scripts/` deleted; `web/README.md` and `web/src/mcp/` deleted; cross-references updated throughout
-- **Replaced all `alert()` calls with sonner toasts** — added `sonner` dependency; `<Toaster position="bottom-right" richColors />` mounted in `Root.tsx`; `toast.success`/`toast.error`/`toast` replace alerts in `SignIn.tsx`, `SignUp.tsx`, `ImageUploader.tsx`; redundant alerts removed from `GroupMembersPanel.tsx` (inline error UI retained); typecheck and build passed clean
-- **Generated Supabase types** — `web/src/lib/database.types.ts` generated from production schema (`puapkkbheusncmglulfh`); `supabaseClient` now uses `createClient<Database>()`; typecheck and build passed. Schema notes: `items.visibility` is `string | null`; `user_in_item_groups()` already exists in DB (RLS Phase 2 helper is deployed); `item_tags`/`tags` tables exist but have no frontend usage
+### Prior sessions (summary)
+- Renamed Stuff Cycler → Circulate; migrated to new Supabase project
+- Added `admin-items` Edge Function; deployed to production
+- Added `ErrorBoundary`, unified item query keys, replaced `alert()` with sonner toasts
+- Generated Supabase types (`database.types.ts`); `supabaseClient` uses `createClient<Database>()`
+- Restricted `get_user_email()` to admin only (migration 12)
+- Repo cleanup, CLAUDE.md created, docs reorganised
+
+### May 17 2026 session
+- **Feed card thumbnails** — changed from fixed `h-48` to `aspect-[4/5]` + `object-contain` + `object-center` (`ItemCard.tsx`). Portrait phone photos display without cropping; dark `bg-base-700` handles letterboxing. No-image placeholder uses same frame.
+- **Responsive navbar** — added hamburger menu for mobile (`Navbar.tsx`). Single `menuOpen` useState. Desktop layout unchanged. Mobile signed-in: brand + New Item + ☰; hamburger panel contains Groups, Admin (admin only), Sign out. Signed-out: Sign in + Sign up inline. Menu closes on item tap.
+- **Item detail header layout** — stacked title and action buttons on mobile (`sm:flex-col` → `sm:flex-row`). Removed visible Archive button from UI; all backend archive code (hook, mutation, modal, `ConfirmAction` type) retained (`routes/Item.tsx`).
+- **Branding — Increment 1 complete** — chose "Orbital C" mark direction (open ring with dot).
+- **Branding — Increment 2 complete:**
+  - Chosen mark (`01-open-orbit.svg`) integrated into navbar as inline SVG beside "Circulate" wordmark. Uses `currentColor` so it inherits active/inactive mint states (`Navbar.tsx`).
+  - `web/public/logo-mark.svg` — canonical static asset copy of the mark.
+  - `web/public/favicon.svg` — favicon-optimised version: dark `#121416` rounded-square background, mint ring, stroke bumped to 2.5 for 16px legibility.
+  - `web/public/apple-touch-icon.png` — 180×180 PNG for iOS home screen.
+  - `web/index.html` — wired `<link rel="icon">`, `<link rel="apple-touch-icon">`, `<meta name="description">`, `<meta name="theme-color">`.
+
+### Branding plan — remaining increments
+| Increment | Work | Status |
+|---|---|---|
+| 1 | Logo direction exploration — Orbital C chosen | ✅ Done |
+| 2 | Favicon/app icon system + base HTML metadata | ✅ Done |
+| 3 | OG/social metadata (`og:*`, `twitter:card`, static preview image) | Pending |
+| 4 | Recruiter/demo polish pass (per-route titles, manifest.json, rough-edge review) | Pending |
 
 ---
 
@@ -151,11 +161,13 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ## 8. Immediate Next Steps
 
-1. ~~**Deploy `admin-items`**~~ ✅ Deployed — admin item detail, archive, edit, and delete flows are operational on https://use-circulate.netlify.app
-2. **Verify admin flows end-to-end** in production: item detail, archive, delete, and edit for another user's item. Confirm Edge Function secrets are current.
-3. ~~**Unify item query keys**~~ ✅ Done
-4. ~~**RLS hardening — Phase 1 (remaining):**~~ ✅ Phase 1 complete — migration 03 fixed; production visibility audit done (all items are `public`, no unexpected values). See §9 for Phase 2 onwards.
-5. ~~**Run `supabase gen types typescript`**~~ ✅ Done — `web/src/lib/database.types.ts` generated; `supabaseClient` uses `createClient<Database>()`.
+1. ~~**Deploy `admin-items`**~~ ✅ Done
+2. ~~**Unify item query keys**~~ ✅ Done
+3. ~~**RLS hardening Phase 1**~~ ✅ Done
+4. ~~**Generate Supabase types**~~ ✅ Done
+5. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
+6. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
+7. **RLS hardening Phase 2+** — verify `user_in_item_groups()` definition matches spec, then proceed with migration for `items`, `profiles`, `groups`.
 
 ---
 
