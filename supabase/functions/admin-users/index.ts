@@ -220,6 +220,14 @@ Deno.serve(async (req) => {
         }
       }
 
+      if (body.banned === false) {
+        const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: "none" });
+        if (error) {
+          console.error("Failed to enable user:", error);
+          return json({ error: error.message, details: error }, 500, origin);
+        }
+      }
+
       console.log("User updated successfully:", id);
       return json({ ok: true }, 200, origin);
     }
@@ -228,6 +236,10 @@ Deno.serve(async (req) => {
     if (req.method === "DELETE" && pathname !== "/") {
       const id = pathname.slice(1);
       const hard = url.searchParams.get("hard") === "true";
+
+      if (id === me.user.id) {
+        return json({ error: "Cannot disable or delete your own account" }, 400, origin);
+      }
 
       if (hard) {
         const { error } = await admin.auth.admin.deleteUser(id);
