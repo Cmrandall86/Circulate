@@ -25,8 +25,14 @@ export default function Navbar() {
         {/* Brand */}
         <Link
           to="/"
-          className={`font-semibold ${isActive('/') ? 'text-mint-400' : 'text-mint-400/70 hover:text-mint-400'}`}
+          className={`flex items-center gap-2 font-semibold transition-colors ${isActive('/') ? 'text-mint-400' : 'text-mint-400/70 hover:text-mint-400'}`}
         >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+            <g stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+              <path d="M20.5 12a8.5 8.5 0 1 1-6-8.12"/>
+              <circle cx="20.5" cy="5.2" r="1.6" fill="currentColor" stroke="none"/>
+            </g>
+          </svg>
           Circulate
         </Link>
 
