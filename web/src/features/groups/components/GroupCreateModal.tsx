@@ -3,11 +3,13 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { useCreateGroup } from '../api'
+import type { Group } from '../types'
 
 export default function GroupCreateModal({
   isOpen,
   onClose,
-}: { isOpen: boolean; onClose: () => void }) {
+  onCreated,
+}: { isOpen: boolean; onClose: () => void; onCreated?: (group: Group) => void }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [inviteOnly, setInviteOnly] = useState(true)
@@ -16,11 +18,12 @@ export default function GroupCreateModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createGroup.mutateAsync({
+      const created = await createGroup.mutateAsync({
         name,
         description,
         is_invite_only: inviteOnly,
       })
+      onCreated?.(created)
       onClose()
       setName('')
       setDescription('')
