@@ -93,7 +93,7 @@ function FeedbackMobileCard({
       <p className="text-ink-400 text-sm">{item.message}</p>
       <div className="text-xs text-ink-600 space-y-1">
         {item.page_url && <p>Page: {item.page_url}</p>}
-        <p className="font-mono">User: {shortUserId(item.user_id)}</p>
+        <p>User: {item.display_name ?? shortUserId(item.user_id)}</p>
         <p>{new Date(item.created_at).toLocaleDateString()}</p>
       </div>
       <FeedbackActions
@@ -183,8 +183,8 @@ export function AdminFeedbackContent() {
                         <td className="px-4 py-3 max-w-xs">
                           <span className="text-ink-400 text-sm">{truncate(item.message, 80)}</span>
                         </td>
-                        <td className="px-4 py-3 text-ink-600 text-sm font-mono">
-                          {shortUserId(item.user_id)}
+                        <td className="px-4 py-3 text-ink-600 text-sm">
+                          {item.display_name ?? shortUserId(item.user_id)}
                         </td>
                         <td className="px-4 py-3 max-w-[10rem]">
                           <span className="block truncate text-sm text-ink-600">

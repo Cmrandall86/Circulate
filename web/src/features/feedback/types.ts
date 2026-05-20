@@ -10,6 +10,8 @@ export const FEEDBACK_TYPE_LABELS: Record<FeedbackType, string> = {
 export interface Feedback {
   id: string
   user_id: string | null
+  /** Enriched at query time from profiles.display_name — not a DB column. */
+  display_name?: string | null
   type: FeedbackType
   message: string
   page_url: string | null

@@ -34,10 +34,25 @@ export function useFeedbackList() {
         .in('status', ['new', 'completed'])
         .order('created_at', { ascending: false })
       if (error) throw error
-      // Generated types reflect the DB column type (string); cast to the
-      // narrower Feedback interface whose type/status fields mirror the
-      // check constraints enforced at the database level.
-      return (data ?? []) as Feedback[]
+
+      const rows = (data ?? []) as Feedback[]
+
+      // Enrich with display_name from profiles.
+      // feedback.user_id == profiles.id (both reference auth.users.id).
+      const userIds = [...new Set(rows.flatMap(r => (r.user_id ? [r.user_id] : [])))]
+      if (userIds.length === 0) return rows
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds)
+
+      const nameMap = new Map((profiles ?? []).map(p => [p.id, p.display_name]))
+
+      return rows.map(r => ({
+        ...r,
+        display_name: r.user_id ? (nameMap.get(r.user_id) ?? null) : null,
+      }))
     },
   })
 }
