@@ -97,7 +97,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ## 4. Current Technical Debt (short list)
 
-- **RLS not enabled** on most tables (`items`, `groups`, `profiles`, `item_images`, etc.). Only `group_members` has RLS (migration 07). The `visibility` column is currently decorative.
+- **RLS normalization in progress** (migration 14). RLS is enabled on all core tables. Items visibility is now enforced by policy (`items_select` uses `user_in_item_groups()` + `is_admin()`). Known remaining gap: `useDeleteImage(bypassOwnerCheck: true)` uses the normal client and will be rejected by `item_images` write policy for admin edits on non-owned items (Phase 5). `interests` and `reservations` still have no RLS.
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
 - **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files. `feedback` table is now in generated types (regenerated May 19, 2026); `features/feedback/types.ts` hand-written type is kept for narrower `type`/`status` unions that the generator emits as `string`.
@@ -114,7 +114,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ## 5. Current Active Priorities (ordered)
 
-1. **RLS hardening** — enable RLS on all public-schema tables; write reviewed policy set (derive from `docs/rls-policies-reference.sql`).
+1. ~~**RLS hardening**~~ ✅ Core tables done (migration 14). Remaining: `interests` RLS (Phase 4), `useDeleteImage` admin path (Phase 5).
 3. **Migration chain cleanup** — reconcile into a clean sequential chain; fix migration 03 references to non-existent tables; make migration 11 idempotent; drop the broad-permission migration 08 policy.
 4. **Add `items.visibility` to `bootstrap.sql`** — or replace bootstrap entirely with the migration chain.
 5. ~~**Generate Supabase types**~~ ✅ Done
@@ -146,6 +146,16 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
   - `web/public/favicon.svg` — favicon-optimised version: dark `#121416` rounded-square background, mint ring, stroke bumped to 2.5 for 16px legibility.
   - `web/public/apple-touch-icon.png` — 180×180 PNG for iOS home screen.
   - `web/index.html` — wired `<link rel="icon">`, `<link rel="apple-touch-icon">`, `<meta name="description">`, `<meta name="theme-color">`.
+
+### May 19 2026 session — RLS normalization (migration 14)
+- **Inspected production RLS state** — discovered RLS was already enabled on all core tables with partial/incorrect policies (`items_select_simple` missing group visibility and admin bypass; `item_images_select` same; `gm_delete` blocking member self-leave; feedback admin policies using unsafe inline profiles subqueries).
+- **`public.user_in_item_groups(item_uuid, user_uuid)`** — canonicalised via `CREATE OR REPLACE`; already SECURITY DEFINER/STABLE in production; migration 14 is now the authoritative source.
+- **`public.is_admin()`** (zero-arg) — new SECURITY DEFINER/STABLE helper; safe for use inside any RLS policy including profiles. Old `is_admin(uid uuid)` (different overload, not SECURITY DEFINER) left in place.
+- **`gm_delete`** — patched to add Clause B: non-owner members may delete their own `group_members` row (`role <> 'owner'`). Fixes silent failure in `useLeaveGroup()`. Last-owner guard preserved.
+- **`items_select`** — replaced `items_select_simple`; now covers public / owner / group-visible (`user_in_item_groups()`) / admin (`is_admin()`). Items visibility is now enforced at DB level.
+- **`item_images_select`** — replaced; mirrors item visibility logic exactly via correlated subquery. Group members can now load images for group-visible items.
+- **`feedback_select_admin` / `feedback_update_admin`** — replaced inline `profiles` subqueries with `public.is_admin()` to avoid fragility when profiles has RLS enabled.
+- All 5 post-migration verification queries passed.
 
 ### May 19 2026 session — Feedback feature
 - **Migration 13** (`13_feedback_table.sql`) — `public.feedback` table with RLS: insert/select own (authenticated), select all + update (admin). No delete policy. Lifecycle: `new` → `completed` → `archived`.
@@ -194,19 +204,34 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 5. **Deploy `admin-users` Edge Function** — required for Enable Account after `4cb9734` (enable via `PATCH { banned: false }`).
 6. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
 7. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
-8. **RLS hardening Phase 2+** — verify `user_in_item_groups()` definition matches spec, then proceed with migration for `items`, `profiles`, `groups`.
+8. ~~**RLS hardening Phase 2+**~~ ✅ Done — migration 14 normalised all core-table policies.
 
 ---
 
 ## 9. RLS Hardening — Status & Phased Plan
 
-### Current State
+### Current State (as of migration 14)
 
-Only `group_members` (migration 07) and `feedback` (migration 13) have RLS enabled. All other public-schema tables are fully unprotected:
+RLS is **enabled on all core tables**. The policy set is now normalised and production-correct:
 
-> `items`, `groups`, `profiles`, `item_images`, `item_visibility_groups`, `interests`, `reservations`
+| Table | RLS | Key policies |
+|---|---|---|
+| `items` | ✅ | `items_select` — public / owner / group (`user_in_item_groups()`) / admin (`is_admin()`) |
+| `profiles` | ✅ | `profiles_*_simple` — select/insert/update/delete (existing, not changed by migration 14) |
+| `groups` | ✅ | `groups_*` — owner-scoped select/insert/update/delete (existing, not changed) |
+| `group_members` | ✅ | `gm_delete` patched to allow self-leave; others unchanged |
+| `item_visibility_groups` | ✅ | `ivg_select` / `ivg_write` (existing, not changed) |
+| `item_images` | ✅ | `item_images_select` — mirrors item visibility via `user_in_item_groups()` + `is_admin()` |
+| `feedback` | ✅ | Admin policies now use `is_admin()` instead of inline profiles subquery |
+| `interests` | ❌ | No RLS — Phase 4 |
+| `reservations` | ❌ | No RLS — Phase 4/claim feature |
 
-The `items.visibility` column is **decorative** — it is written and read by the frontend but enforces nothing at the DB level. Group-visibility rules are entirely client-enforced today.
+**Helper functions available:**
+- `public.user_in_item_groups(item_uuid, user_uuid)` — SECURITY DEFINER, STABLE; breaks the recursion chain
+- `public.is_admin()` (zero-arg) — SECURITY DEFINER, STABLE; safe for use in any policy including profiles
+- `public.is_admin(uid uuid)` (old, one-arg) — NOT SECURITY DEFINER; do not use in new policies
+
+**`items.visibility` is now enforced at the DB level.** Group-visibility rules are no longer client-enforced only.
 
 ### Prior Failure History
 
@@ -216,15 +241,11 @@ Multiple past RLS attempts failed due to a **recursion loop**:
 items → item_visibility_groups → group_members → items
 ```
 
-This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` nuclear rollback was used each time. All attempts are preserved in `docs/` (`rls-policies-reference.sql`, `TEMP-DISABLE-RLS.sql`) for reference.
-
-### Critical Architectural Requirement: Recursion-Safe Helper
-
-**All future RLS policies on `items` and related tables must use a `SECURITY DEFINER` helper function** (`public.user_in_item_groups(item_uuid, user_uuid)`) rather than joining `item_visibility_groups` and `group_members` directly inside a policy. This breaks the recursion cycle. The full function definition is in `docs/RLS_HARDENING_PLAN.md` — fetch it when implementing Phase 2.
+This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` nuclear rollback was used each time. **Resolved** by the `SECURITY DEFINER` helper — all policies that need group-visibility checks call `user_in_item_groups()` instead of joining inline.
 
 ### Known Gap: Admin Image Deletion
 
-`useDeleteImage(bypassOwnerCheck: true)` in the frontend bypasses the owner check but still uses the normal Supabase client. Once `item_images` has RLS, individual image deletions during admin edits of non-owned items will be rejected by policy.
+`useDeleteImage(bypassOwnerCheck: true)` in the frontend bypasses the owner check but still uses the normal Supabase client. Individual image deletions during admin edits of non-owned items are blocked by `item_images_write` policy.
 
 - Full-item admin delete via the `admin-items` Edge Function (service-role) is **not affected**.
 - Deferred to **Phase 5**: update this path to use service-role or route through the Edge Function.
@@ -234,14 +255,14 @@ This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` 
 | Phase | Work | Status |
 |---|---|---|
 | 1 | ~~Restrict `get_user_email()` to admin only~~ (migration 12) | ✅ Done |
-| 1 | ~~Fix migration 03 — remove broken index lines for non-existent tables~~ | ✅ Done |
-| 1 | ~~Audit `items.visibility` distribution in production~~ — all rows are `public`, no nulls | ✅ Done |
-| 2 | Create `public.user_in_item_groups()` SECURITY DEFINER helper | ⚠️ **Function already exists in production.** Verify its definition matches the spec in `docs/RLS_HARDENING_PLAN.md` and record it as a migration before writing any new helper. |
-| 3 | Enable RLS on `items`, `profiles`, `groups` | Pending |
-| 4 | Enable RLS on `item_visibility_groups`, `item_images`; audit `group_members` policy | Pending |
-| 5 | Fix `useDeleteImage` admin path for RLS compatibility | Pending |
+| 1 | ~~Fix migration 03 — remove broken index lines~~ | ✅ Done |
+| 1 | ~~Audit `items.visibility` distribution~~ — all rows `public`, no nulls | ✅ Done |
+| 2 | ~~Canonicalise `user_in_item_groups()`, add `is_admin()`, patch `gm_delete`~~ (migration 14) | ✅ Done |
+| 3 | ~~Normalise items / item_images / feedback policies~~ (migration 14) | ✅ Done |
+| 4 | Enable RLS on `interests`; audit `ivg_*` and `group_members` policies under load | Pending |
+| 5 | Fix `useDeleteImage` admin path (admin edit of non-owned item images) | Pending |
 
-**Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `docs/TEMP-DISABLE-RLS.sql` accessible through Phase 4 as a rollback option.
+**Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `docs/TEMP-DISABLE-RLS.sql` accessible through Phase 5 as a rollback option.
 
 ---
 
