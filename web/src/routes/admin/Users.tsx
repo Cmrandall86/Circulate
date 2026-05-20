@@ -6,6 +6,7 @@ import Input from '@/components/ui/Input'
 import Modal from '@/components/ui/Modal'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import { AdminFeedbackContent } from './Feedback'
 
 interface User {
   id: string
@@ -203,6 +204,7 @@ function UserMobileCard({
 
 function AdminUsersContent() {
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'users' | 'feedback'>('users')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -429,6 +431,32 @@ function AdminUsersContent() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {/* ── Admin section tabs ── */}
+      <div className="flex border-b border-base-700 mb-6">
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+            activeTab === 'users'
+              ? 'border-mint-400 text-mint-400'
+              : 'border-transparent text-ink-600 hover:text-ink-400'
+          }`}
+        >
+          Users
+        </button>
+        <button
+          onClick={() => setActiveTab('feedback')}
+          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+            activeTab === 'feedback'
+              ? 'border-mint-400 text-mint-400'
+              : 'border-transparent text-ink-600 hover:text-ink-400'
+          }`}
+        >
+          Feedback
+        </button>
+      </div>
+
+      {activeTab === 'feedback' ? <AdminFeedbackContent /> : (
+      <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h1 className="text-2xl font-bold text-ink-400">User Management</h1>
         <Button className="btn-accent w-full sm:w-auto" onClick={() => setCreateModalOpen(true)}>
@@ -592,6 +620,8 @@ function AdminUsersContent() {
           onConfirm={() => deleteUserMutation.mutate(selectedUser.id)}
           loading={deleteUserMutation.isPending}
         />
+      )}
+      </>
       )}
     </div>
   )

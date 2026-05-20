@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 18, 2026
+Last updated: May 19, 2026
 
 ### Document Hierarchy
 
@@ -81,6 +81,18 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - Owner gets a `group_members` row automatically via `add_owner_membership` trigger (migration 06)
 - Item visibility to groups via `item_visibility_groups` join table
 
+### Feedback
+- Signed-in users submit feedback from a modal opened via "Feedback" in the navbar (desktop link + mobile hamburger menu)
+- Fields: `type` (`bug` | `feature_request` | `question` | `general`), `message`
+- Auto-captured: `user_id`, `page_url` (`window.location.pathname + search`), `user_agent` (`navigator.userAgent`), `created_at`
+- Stored in `public.feedback` (migration 13); RLS is enabled — users can insert/select own rows, admins can select all and update status
+- Lifecycle: `new` → `completed` → `archived`
+- Admins review feedback inside the existing admin area (`/admin/users`) via a "Users / Feedback" tab switcher
+- Default admin view shows `new` and `completed` rows only; archived rows are hidden but retained
+- No Edge Function — normal Supabase client insert (user) and update (admin). RLS enforces the security boundary.
+- No permanent delete in MVP
+- Frontend: `web/src/features/feedback/` (`types.ts`, `api.ts`, `FeedbackModal.tsx`); admin UI in `web/src/routes/admin/Feedback.tsx` (exported `AdminFeedbackContent` composed into `Users.tsx`)
+
 ---
 
 ## 4. Current Technical Debt (short list)
@@ -88,7 +100,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - **RLS not enabled** on most tables (`items`, `groups`, `profiles`, `item_images`, etc.). Only `group_members` has RLS (migration 07). The `visibility` column is currently decorative.
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
-- **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files.
+- **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files. `feedback` table is now in generated types (regenerated May 19, 2026); `features/feedback/types.ts` hand-written type is kept for narrower `type`/`status` unions that the generator emits as `string`.
 - ~~**Query key inconsistency**~~: item detail/edit now use `itemKeys.one(id)` = `['items', id]` everywhere. Fixed.
 - ~~**`get_user_email()` PII risk**~~ — fixed in migration 12; function now restricted to admin callers only.
 - `zod` installed but never used.
@@ -134,6 +146,14 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
   - `web/public/favicon.svg` — favicon-optimised version: dark `#121416` rounded-square background, mint ring, stroke bumped to 2.5 for 16px legibility.
   - `web/public/apple-touch-icon.png` — 180×180 PNG for iOS home screen.
   - `web/index.html` — wired `<link rel="icon">`, `<link rel="apple-touch-icon">`, `<meta name="description">`, `<meta name="theme-color">`.
+
+### May 19 2026 session — Feedback feature
+- **Migration 13** (`13_feedback_table.sql`) — `public.feedback` table with RLS: insert/select own (authenticated), select all + update (admin). No delete policy. Lifecycle: `new` → `completed` → `archived`.
+- **User submit flow** — "Feedback" button in navbar (desktop + mobile hamburger) opens a lightweight modal. Type select + message textarea. Captures `page_url` and `user_agent`. Direct Supabase insert; sonner toast on result.
+- **Admin review** — "Users / Feedback" tab switcher inside existing `/admin/users` page. Feedback tab shows type badge, message, truncated user ID, page URL, date, status badge. "Mark Completed" (new→completed) and "Archive" (completed→archived) actions. Default view hides archived rows.
+- **No Edge Function** — RLS on `feedback` is sufficient; no service-role key required.
+- **Supabase types regenerated** — `database.types.ts` now includes `feedback` table; `any` cast removed from `api.ts`.
+- **Navbar modal fix** — FeedbackModal rendered as Fragment sibling of the sticky navbar div to avoid `backdrop-filter` containing-block issue that clipped the modal top.
 
 ### May 18 2026 session — mobile / admin UI polish (pre-RLS)
 - **Groups page (`/groups`)** — mobile-first layout polish: stacked page header and owner actions, improved member-row touch targets, `min-w-0` truncation. Accordion UX: groups collapsed by default, single-open expand, compact header (name, invite-only badge, member count, chevron). Expanded body shows description, owner actions, `GroupMembersPanel`. Auto-expands newly created group via `GroupCreateModal` `onCreated` callback.
@@ -182,7 +202,7 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 
 ### Current State
 
-Only `group_members` has RLS enabled (migration 07). All other public-schema tables are fully unprotected:
+Only `group_members` (migration 07) and `feedback` (migration 13) have RLS enabled. All other public-schema tables are fully unprotected:
 
 > `items`, `groups`, `profiles`, `item_images`, `item_visibility_groups`, `interests`, `reservations`
 

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
+import FeedbackModal from '@/features/feedback/FeedbackModal'
 
 export default function Navbar() {
   const { user } = useAuth()
@@ -11,6 +12,7 @@ export default function Navbar() {
   const router = useRouterState()
   const currentPath = router.location.pathname
   const [menuOpen, setMenuOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   const isActive = (path: string) => {
     if (path === '/') return currentPath === '/'
@@ -20,6 +22,7 @@ export default function Navbar() {
   const closeMenu = () => setMenuOpen(false)
 
   return (
+    <>
     <div className="sticky top-0 z-10 border-b border-base-700 bg-base-800/80 backdrop-blur">
       <div className="container mx-auto flex items-center justify-between p-3">
         {/* Brand */}
@@ -52,11 +55,19 @@ export default function Navbar() {
             <Link
               to="/admin/users"
               className={`transition-colors ${
-                isActive('/admin/users') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
+                isActive('/admin') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
               }`}
             >
               Admin
             </Link>
+          )}
+          {user && (
+            <button
+              className="transition-colors text-ink-600 hover:text-ink-400"
+              onClick={() => setFeedbackOpen(true)}
+            >
+              Feedback
+            </button>
           )}
           {user ? (
             <>
@@ -167,13 +178,19 @@ export default function Navbar() {
             <Link
               to="/admin/users"
               className={`py-3 px-2 rounded-lg transition-colors ${
-                isActive('/admin/users') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+                isActive('/admin') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
               }`}
               onClick={closeMenu}
             >
               Admin
             </Link>
           )}
+          <button
+            className="py-3 px-2 rounded-lg text-left text-ink-400 hover:bg-base-700 transition-colors"
+            onClick={() => { closeMenu(); setFeedbackOpen(true) }}
+          >
+            Feedback
+          </button>
           <button
             className="py-3 px-2 rounded-lg text-left text-ink-400 hover:bg-base-700 transition-colors"
             onClick={() => { closeMenu(); supabase.auth.signOut() }}
@@ -183,5 +200,8 @@ export default function Navbar() {
         </div>
       )}
     </div>
+
+    <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </>
   )
 }
