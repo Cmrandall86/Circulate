@@ -59,7 +59,7 @@ export default function UserSearchInput({
         
         if (profileIds.length === 0) {
           setResults([])
-          setShowDropdown(false)
+          setShowDropdown(true)
           setIsSearching(false)
           return
         }
@@ -78,7 +78,7 @@ export default function UserSearchInput({
         )
 
         setResults(filtered)
-        setShowDropdown(filtered.length > 0)
+        setShowDropdown(true)
       } catch (error) {
         console.error('Error searching users:', error)
         setResults([])

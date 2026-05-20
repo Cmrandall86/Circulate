@@ -300,9 +300,9 @@ export function useRemoveMember(groupId: string) {
         .eq('group_id', groupId)
       
       const ownerCount = members?.filter(m => m.role === 'owner').length ?? 0
-      const targetMember = members?.find(m => m.role === 'owner')
-      
-      if (ownerCount === 1 && targetMember) {
+      const targetMember = members?.find(m => m.user_id === userId)
+
+      if (targetMember?.role === 'owner' && ownerCount === 1) {
         throw new Error('Cannot remove the last owner of the group')
       }
 
