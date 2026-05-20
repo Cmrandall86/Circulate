@@ -51,7 +51,7 @@ Circulate/
 │   ├── src/
 │   │   ├── main.tsx              ← Router + QueryClient + AuthProvider wiring
 │   │   ├── routes/               ← Page components
-│   │   ├── features/             ← items/, groups/, admin-items/
+│   │   ├── features/             ← items/, groups/, admin-items/, feedback/
 │   │   ├── components/           ← Navbar, AuthGate, AdminGate, ImageUploader, ErrorBoundary
 │   │   │   └── ui/               ← Button, Input, Card, Modal, Badge
 │   │   ├── hooks/                ← useAuth, useRole, useFeed
@@ -92,7 +92,7 @@ Circulate/
 ### Item visibility
 - `items.visibility = 'public'` → readable by anyone
 - `items.visibility = 'groups'` → readable by members of groups in `item_visibility_groups`
-- ⚠️ Currently decorative — no RLS enforces this yet. See RLS hardening plan.
+- ✅ Enforced at the DB level via `items_select` RLS policy (migration 14). Uses `public.user_in_item_groups()` SECURITY DEFINER helper to avoid recursion.
 
 ### Admin moderation
 - Admin controls live in normal item flows (`/item/$id`, `/item/$id/edit`), not a separate dashboard
@@ -125,10 +125,10 @@ Both functions verify JWT + `profiles.role === 'admin'` before using service-rol
 
 ## Known Open Issues (summary)
 
-- **RLS not enabled** on most tables — `items`, `groups`, `profiles`, `item_images` are unprotected. Only `group_members` has RLS. This is the biggest production-readiness gap.
+- **RLS normalised** (migration 14) — all core tables have RLS + correct policies. Remaining gaps: `interests` and `reservations` (no RLS yet); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
 - **Schema drift:** `items.visibility` exists in production but is absent from `bootstrap.sql`.
-- **Migration gaps:** non-sequential numbering (03, 06, 07, 08, 10, 11, 12). Migrations 08 and 11 for storage are contradictory.
-- **`send-group-invitation` Edge Function** is documented in `supabase/README.md` (now `docs/supabase-overview.md`) but does not exist on disk.
+- **Migration gaps:** non-sequential numbering (03, 06, 07, 08, 10, 11, 12, 13, 14). Migrations 08 and 11 for storage are contradictory.
+- **`send-group-invitation` Edge Function** is documented in `docs/supabase-overview.md` but does not exist on disk.
 
 Full details and the ordered priority list are in `docs/ACTIVE_CONTEXT.md`.
 Full RLS phased plan is in `docs/RLS_HARDENING_PLAN.md`.

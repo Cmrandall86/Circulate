@@ -63,7 +63,7 @@ Two Edge Functions exist. Both verify the caller's JWT and check `profiles.role 
   - `PATCH /:id { action: 'update' }` — update fields + visibility groups for items the admin doesn't own
   - `DELETE /:id` — hard delete (storage objects → related rows → item row)
 
-The **feed does not use the admin-items Edge Function**. The `items` table has no RLS enabled (per `bootstrap.sql`), so the normal Supabase client query already returns all items for all users. If RLS is added to `items` in the future, `useFeed.ts` will need to be revisited.
+The **feed does not use the admin-items Edge Function**. Since migration 14 the `items` table has the `items_select` RLS policy, which includes an `OR public.is_admin()` clause so admins see all items in the feed via the normal client. Public items are visible to all users including unauthenticated. Group-visible items are only visible to group members and admins.
 
 ### Storage
 - Private bucket: `images`
@@ -91,13 +91,14 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
 - Default admin view shows `new` and `completed` rows only; archived rows are hidden but retained
 - No Edge Function — normal Supabase client insert (user) and update (admin). RLS enforces the security boundary.
 - No permanent delete in MVP
+- Admin feedback view shows the submitter's `display_name` (fetched from `profiles` in a second query after loading feedback rows). Falls back to truncated UUID if no display_name is available.
 - Frontend: `web/src/features/feedback/` (`types.ts`, `api.ts`, `FeedbackModal.tsx`); admin UI in `web/src/routes/admin/Feedback.tsx` (exported `AdminFeedbackContent` composed into `Users.tsx`)
 
 ---
 
 ## 4. Current Technical Debt (short list)
 
-- **RLS normalization in progress** (migration 14). RLS is enabled on all core tables. Items visibility is now enforced by policy (`items_select` uses `user_in_item_groups()` + `is_admin()`). Known remaining gap: `useDeleteImage(bypassOwnerCheck: true)` uses the normal client and will be rejected by `item_images` write policy for admin edits on non-owned items (Phase 5). `interests` and `reservations` still have no RLS.
+- **RLS complete for core tables** (migration 14). All core tables have RLS + correct policies. `items.visibility` enforced at DB level. Remaining gaps: `interests` and `reservations` (no RLS); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
 - **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files. `feedback` table is now in generated types (regenerated May 19, 2026); `features/feedback/types.ts` hand-written type is kept for narrower `type`/`status` unions that the generator emits as `string`.
@@ -146,6 +147,11 @@ The **feed does not use the admin-items Edge Function**. The `items` table has n
   - `web/public/favicon.svg` — favicon-optimised version: dark `#121416` rounded-square background, mint ring, stroke bumped to 2.5 for 16px legibility.
   - `web/public/apple-touch-icon.png` — 180×180 PNG for iOS home screen.
   - `web/index.html` — wired `<link rel="icon">`, `<link rel="apple-touch-icon">`, `<meta name="description">`, `<meta name="theme-color">`.
+
+### May 19 2026 session — group bugs + feedback display_name
+- **`useRemoveMember` guard fix** (`features/groups/api.ts`) — `targetMember` was finding the first owner row instead of the specific user being removed, causing every remove attempt in a single-owner group to throw "Cannot remove the last owner". Fixed to `members?.find(m => m.user_id === userId)` so the guard only fires when removing the actual last owner.
+- **`UserSearchInput` dropdown fix** (`features/groups/components/UserSearchInput.tsx`) — "No users found" message was logically unreachable because `showDropdown` was set to `filtered.length > 0` but the empty-state branch required `showDropdown && results.length === 0`. Fixed by setting `showDropdown(true)` after any completed search, making both branches reachable.
+- **Feedback admin display_name** (`features/feedback/api.ts`, `routes/admin/Feedback.tsx`) — `useFeedbackList` now enriches results with a second `profiles` query keyed on `user_id`. Admin feedback view shows submitter's display_name; falls back to truncated UUID.
 
 ### May 19 2026 session — RLS normalization (migration 14)
 - **Inspected production RLS state** — discovered RLS was already enabled on all core tables with partial/incorrect policies (`items_select_simple` missing group visibility and admin bypass; `item_images_select` same; `gm_delete` blocking member self-leave; feedback admin policies using unsafe inline profiles subqueries).
