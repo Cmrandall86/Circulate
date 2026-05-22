@@ -1,9 +1,17 @@
+import { useState } from 'react'
 import { toast } from 'sonner'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
-import { useFeedbackList, useUpdateFeedbackStatus } from '@/features/feedback/api'
+import Modal from '@/components/ui/Modal'
+import {
+  useFeedbackList,
+  useUpdateFeedbackStatus,
+  useDeleteFeedback,
+} from '@/features/feedback/api'
 import { FEEDBACK_TYPE_LABELS, type Feedback, type FeedbackType } from '@/features/feedback/types'
+
+type ViewMode = 'active' | 'handled'
 
 function typeBadgeVariant(type: FeedbackType): 'error' | 'warning' | 'default' {
   if (type === 'bug') return 'error'
@@ -11,8 +19,16 @@ function typeBadgeVariant(type: FeedbackType): 'error' | 'warning' | 'default' {
   return 'default'
 }
 
-function statusBadgeVariant(status: Feedback['status']): 'success' | 'default' {
-  return status === 'completed' ? 'success' : 'default'
+function statusBadgeVariant(status: Feedback['status']): 'success' | 'warning' | 'default' {
+  if (status === 'completed') return 'success'
+  if (status === 'archived') return 'warning'
+  return 'default'
+}
+
+function statusLabel(status: Feedback['status']): string {
+  if (status === 'new') return 'New'
+  if (status === 'completed') return 'Completed'
+  return 'Archived'
 }
 
 function truncate(str: string | null | undefined, max: number): string {
@@ -27,57 +43,80 @@ function shortUserId(id: string | null): string {
 
 function FeedbackActions({
   item,
+  viewMode,
   onComplete,
   onArchive,
+  onDeleteRequest,
   loading,
   variant,
 }: {
   item: Feedback
+  viewMode: ViewMode
   onComplete: (id: string) => void
   onArchive: (id: string) => void
+  onDeleteRequest: (id: string) => void
   loading: boolean
   variant: 'table' | 'card'
 }) {
   const btnClass = variant === 'card' ? 'min-h-11 w-full' : ''
 
-  if (item.status === 'new') {
-    return (
+  if (viewMode === 'active') {
+    if (item.status === 'new') {
+      return (
+        <Button
+          type="button"
+          variant={variant === 'card' ? 'secondary' : 'ghost'}
+          className={btnClass}
+          disabled={loading}
+          onClick={() => onComplete(item.id)}
+        >
+          Mark Completed
+        </Button>
+      )
+    }
+    return null
+  }
+
+  // Handled view
+  return (
+    <div className={variant === 'card' ? 'flex flex-col gap-2' : 'flex items-center gap-2'}>
+      {item.status === 'completed' && (
+        <Button
+          type="button"
+          variant={variant === 'card' ? 'secondary' : 'ghost'}
+          className={btnClass}
+          disabled={loading}
+          onClick={() => onArchive(item.id)}
+        >
+          Archive
+        </Button>
+      )}
       <Button
         type="button"
-        variant={variant === 'card' ? 'secondary' : 'ghost'}
-        className={btnClass}
+        variant="ghost"
+        className={`text-red-400 hover:text-red-300 ${btnClass}`}
         disabled={loading}
-        onClick={() => onComplete(item.id)}
+        onClick={() => onDeleteRequest(item.id)}
       >
-        Mark Completed
+        Delete
       </Button>
-    )
-  }
-  if (item.status === 'completed') {
-    return (
-      <Button
-        type="button"
-        variant={variant === 'card' ? 'secondary' : 'ghost'}
-        className={btnClass}
-        disabled={loading}
-        onClick={() => onArchive(item.id)}
-      >
-        Archive
-      </Button>
-    )
-  }
-  return null
+    </div>
+  )
 }
 
 function FeedbackMobileCard({
   item,
+  viewMode,
   onComplete,
   onArchive,
+  onDeleteRequest,
   loading,
 }: {
   item: Feedback
+  viewMode: ViewMode
   onComplete: (id: string) => void
   onArchive: (id: string) => void
+  onDeleteRequest: (id: string) => void
   loading: boolean
 }) {
   return (
@@ -87,7 +126,7 @@ function FeedbackMobileCard({
           {FEEDBACK_TYPE_LABELS[item.type]}
         </Badge>
         <Badge variant={statusBadgeVariant(item.status)}>
-          {item.status === 'new' ? 'New' : 'Completed'}
+          {statusLabel(item.status)}
         </Badge>
       </div>
       <p className="text-ink-400 text-sm">{item.message}</p>
@@ -98,8 +137,10 @@ function FeedbackMobileCard({
       </div>
       <FeedbackActions
         item={item}
+        viewMode={viewMode}
         onComplete={onComplete}
         onArchive={onArchive}
+        onDeleteRequest={onDeleteRequest}
         loading={loading}
         variant="card"
       />
@@ -108,9 +149,15 @@ function FeedbackMobileCard({
 }
 
 export function AdminFeedbackContent() {
-  const { data, isLoading, error } = useFeedbackList()
+  const [viewMode, setViewMode] = useState<ViewMode>('active')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  const { data, isLoading, error } = useFeedbackList(viewMode)
   const updateStatus = useUpdateFeedbackStatus()
+  const deleteFeedback = useDeleteFeedback()
+
   const items: Feedback[] = data ?? []
+  const mutating = updateStatus.isPending || deleteFeedback.isPending
 
   const handleAction = (id: string, status: 'completed' | 'archived') => {
     const label = status === 'completed' ? 'marked as completed' : 'archived'
@@ -123,13 +170,35 @@ export function AdminFeedbackContent() {
     )
   }
 
+  const handleDeleteConfirm = () => {
+    if (!confirmDeleteId) return
+    const id = confirmDeleteId
+    setConfirmDeleteId(null)
+    deleteFeedback.mutate(id, {
+      onSuccess: () => toast.success('Feedback deleted'),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Delete failed'),
+    })
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink-400">Feedback</h1>
-        <p className="text-sm text-ink-600 mt-1">
-          Showing new and completed feedback. Archived entries are hidden.
-        </p>
+      {/* Header + view toggle */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-400">Feedback</h1>
+          <p className="text-sm text-ink-600 mt-1">
+            {viewMode === 'active'
+              ? 'Showing new feedback that needs attention.'
+              : 'Showing completed and archived feedback.'}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setViewMode(viewMode === 'active' ? 'handled' : 'active')}
+        >
+          {viewMode === 'active' ? 'View archived feedback' : 'Back to active feedback'}
+        </Button>
       </div>
 
       {isLoading && <div className="text-ink-500">Loading feedback…</div>}
@@ -142,7 +211,9 @@ export function AdminFeedbackContent() {
       {!isLoading && !error && (
         <>
           {items.length === 0 ? (
-            <div className="py-8 text-center text-ink-600">No feedback yet</div>
+            <div className="py-8 text-center text-ink-600">
+              {viewMode === 'active' ? 'No new feedback' : 'No archived feedback'}
+            </div>
           ) : (
             <>
               {/* Mobile cards */}
@@ -151,9 +222,11 @@ export function AdminFeedbackContent() {
                   <FeedbackMobileCard
                     key={item.id}
                     item={item}
+                    viewMode={viewMode}
                     onComplete={(id) => handleAction(id, 'completed')}
                     onArchive={(id) => handleAction(id, 'archived')}
-                    loading={updateStatus.isPending}
+                    onDeleteRequest={setConfirmDeleteId}
+                    loading={mutating}
                   />
                 ))}
               </div>
@@ -196,15 +269,17 @@ export function AdminFeedbackContent() {
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={statusBadgeVariant(item.status)}>
-                            {item.status === 'new' ? 'New' : 'Completed'}
+                            {statusLabel(item.status)}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
                           <FeedbackActions
                             item={item}
+                            viewMode={viewMode}
                             onComplete={(id) => handleAction(id, 'completed')}
                             onArchive={(id) => handleAction(id, 'archived')}
-                            loading={updateStatus.isPending}
+                            onDeleteRequest={setConfirmDeleteId}
+                            loading={mutating}
                             variant="table"
                           />
                         </td>
@@ -217,6 +292,35 @@ export function AdminFeedbackContent() {
           )}
         </>
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        title="Delete feedback"
+      >
+        <p className="text-ink-400 mb-6">
+          Permanently delete this feedback entry? This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setConfirmDeleteId(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            className="bg-red-600 hover:bg-red-500 border-red-600 hover:border-red-500"
+            disabled={deleteFeedback.isPending}
+            onClick={handleDeleteConfirm}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

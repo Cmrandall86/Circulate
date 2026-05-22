@@ -223,36 +223,15 @@ function AdminUsersContent() {
     let { data: { session } } = await supabase.auth.getSession()
     const nowSecs = Math.floor(Date.now() / 1000)
 
-    // DEV DIAG — remove before shipping
-    console.log('[admin-users diag] getSession:', {
-      hasSession: !!session,
-      hasToken: !!session?.access_token,
-      tokenLen: session?.access_token?.length ?? 0,
-      expiresAt: session?.expires_at,
-      now: nowSecs,
-      isExpired: session?.expires_at != null ? session.expires_at < nowSecs : 'no expires_at',
-    })
-
     // getSession() reads from localStorage and may return an expired token if the
     // browser throttled the SDK's background refresh timer (tab idle > ~1 hour).
     // Explicitly refresh when the token is expired or within 60 s of expiry.
     if (session) {
       if ((session.expires_at ?? 0) < nowSecs + 60) {
-        const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
-        // DEV DIAG — remove before shipping
-        console.log('[admin-users diag] refreshSession:', {
-          refreshed: !!refreshed.session,
-          error: refreshErr?.message ?? null,
-        })
+        const { data: refreshed } = await supabase.auth.refreshSession()
         if (refreshed.session) session = refreshed.session
       }
     }
-
-    // DEV DIAG — remove before shipping
-    console.log('[admin-users diag] final token:', {
-      hasToken: !!session?.access_token,
-      tokenLen: session?.access_token?.length ?? 0,
-    })
 
     if (session?.user?.id && !currentUserId) {
       setCurrentUserId(session.user.id)
@@ -274,14 +253,6 @@ function AdminUsersContent() {
     url.searchParams.set('page', String(page))
     url.searchParams.set('perPage', '20')
     if (searchQuery) url.searchParams.set('query', searchQuery)
-
-    // DEV DIAG — remove before shipping
-    console.log('[admin-users diag] fetch:', {
-      tokenLen: token.length,
-      hasToken: token.length > 0,
-      url: url.toString(),
-      anonKeyPrefix: anon?.slice(0, 20) ?? 'MISSING',
-    })
 
     const res = await fetch(url.toString(), {
       headers: {
@@ -310,7 +281,7 @@ function AdminUsersContent() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users', page, searchQuery],
     queryFn: fetchUsers,
-    retry: false, // DEV DIAG — restore default (3) before shipping
+    retry: 3,
   })
 
   const createUserMutation = useMutation({

@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 21, 2026
+Last updated: May 21, 2026 (feedback admin UX + migration 15)
 
 ### Document Hierarchy
 
@@ -85,20 +85,22 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 - Signed-in users submit feedback from a modal opened via "Feedback" in the navbar (desktop link + mobile hamburger menu)
 - Fields: `type` (`bug` | `feature_request` | `question` | `general`), `message`
 - Auto-captured: `user_id`, `page_url` (`window.location.pathname + search`), `user_agent` (`navigator.userAgent`), `created_at`
-- Stored in `public.feedback` (migration 13); RLS is enabled — users can insert/select own rows, admins can select all and update status
+- Stored in `public.feedback` (migration 13); RLS is enabled — users can insert/select own rows, admins can select all, update status, and delete
 - Lifecycle: `new` → `completed` → `archived`
 - Admins review feedback inside the existing admin area (`/admin/users`) via a "Users / Feedback" tab switcher
-- Default admin view shows `new` and `completed` rows only; archived rows are hidden but retained
-- No Edge Function — normal Supabase client insert (user) and update (admin). RLS enforces the security boundary.
-- No permanent delete in MVP
+- Admin feedback has two views toggled by a button:
+  - **Active view** (default): shows `status = 'new'` rows only. "Mark Completed" moves to completed and removes from view.
+  - **Handled view**: shows `status in ('completed', 'archived')` rows. "Archive" moves completed → archived. "Delete" permanently deletes after confirmation modal.
+- No Edge Function — normal Supabase client insert/update/delete + RLS. Migration 15 added `feedback_delete_admin` DELETE policy using `public.is_admin()`.
 - Admin feedback view shows the submitter's `display_name` (fetched from `profiles` in a second query after loading feedback rows). Falls back to truncated UUID if no display_name is available.
 - Frontend: `web/src/features/feedback/` (`types.ts`, `api.ts`, `FeedbackModal.tsx`); admin UI in `web/src/routes/admin/Feedback.tsx` (exported `AdminFeedbackContent` composed into `Users.tsx`)
+- `useFeedbackList(mode)` accepts `'active'` or `'handled'`; `feedbackKeys.list(mode)` is mode-scoped. Both views share invalidation via `feedbackKeys.all`.
 
 ---
 
 ## 4. Current Technical Debt (short list)
 
-- **DEV DIAG logs in `Users.tsx`** — temporary `console.log` diagnostics and `retry: false` on the admin-users query. **Remove before next production deploy.** Tagged `[admin-users diag]` in `getToken()` / `fetchUsers()`; `retry` comment says "restore default (3) before shipping".
+- ~~**DEV DIAG logs in `Users.tsx`**~~ ✅ Removed — console.log diagnostics and `retry: false` cleaned up.
 - **RLS complete for core tables** (migration 14). All core tables have RLS + correct policies. `items.visibility` enforced at DB level. Remaining gaps: `interests` and `reservations` (no RLS); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
@@ -173,8 +175,7 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 **`ItemCard.tsx`** — Hover border refined to `[@media(hover:hover)]:hover:border-mint-400` so the highlight does not trigger on touch devices.
 
-**⚠️ DEV DIAG — must remove before next production deploy:**
-`web/src/routes/admin/Users.tsx` contains temporary diagnostic `console.log` calls in `getToken()` / `fetchUsers()` tagged `[admin-users diag]`, and `retry: false` on the admin-users `useQuery`. These must be cleaned up before deploying.
+**DEV DIAG cleanup complete** — diagnostic `console.log` calls and `retry: false` removed from `Users.tsx`.
 
 ### May 19 2026 session — RLS normalization (migration 14)
 - **Inspected production RLS state** — discovered RLS was already enabled on all core tables with partial/incorrect policies (`items_select_simple` missing group visibility and admin bypass; `item_images_select` same; `gm_delete` blocking member self-leave; feedback admin policies using unsafe inline profiles subqueries).
@@ -230,7 +231,7 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 2. ~~**Unify item query keys**~~ ✅ Done
 3. ~~**RLS hardening Phase 1**~~ ✅ Done
 4. ~~**Generate Supabase types**~~ ✅ Done
-5. **Remove DEV DIAG logs from `Users.tsx`** — `console.log` calls tagged `[admin-users diag]`, `retry: false` on admin-users query. Must be done before next production deploy.
+5. ~~**Remove DEV DIAG logs from `Users.tsx`**~~ ✅ Done.
 6. **Deploy `admin-users` Edge Function** — required for Enable Account after `4cb9734` (enable via `PATCH { banned: false }`).
 6. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
 7. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
@@ -252,7 +253,7 @@ RLS is **enabled on all core tables**. The policy set is now normalised and prod
 | `group_members` | ✅ | `gm_delete` patched to allow self-leave; others unchanged |
 | `item_visibility_groups` | ✅ | `ivg_select` / `ivg_write` (existing, not changed) |
 | `item_images` | ✅ | `item_images_select` — mirrors item visibility via `user_in_item_groups()` + `is_admin()` |
-| `feedback` | ✅ | Admin policies now use `is_admin()` instead of inline profiles subquery |
+| `feedback` | ✅ | Admin policies use `is_admin()`; migration 15 adds admin DELETE policy |
 | `interests` | ❌ | No RLS — Phase 4 |
 | `reservations` | ❌ | No RLS — Phase 4/claim feature |
 

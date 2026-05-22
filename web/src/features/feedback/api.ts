@@ -4,7 +4,7 @@ import type { Feedback, FeedbackType } from './types'
 
 export const feedbackKeys = {
   all: ['feedback'] as const,
-  list: () => [...feedbackKeys.all, 'list'] as const,
+  list: (mode: 'active' | 'handled') => [...feedbackKeys.all, 'list', mode] as const,
 }
 
 interface SubmitFeedbackInput {
@@ -24,14 +24,15 @@ export function useSubmitFeedback() {
   })
 }
 
-export function useFeedbackList() {
+export function useFeedbackList(mode: 'active' | 'handled') {
+  const statusFilter = mode === 'active' ? ['new'] : ['completed', 'archived']
   return useQuery({
-    queryKey: feedbackKeys.list(),
+    queryKey: feedbackKeys.list(mode),
     queryFn: async (): Promise<Feedback[]> => {
       const { data, error } = await supabase
         .from('feedback')
         .select('*')
-        .in('status', ['new', 'completed'])
+        .in('status', statusFilter)
         .order('created_at', { ascending: false })
       if (error) throw error
 
@@ -68,7 +69,29 @@ export function useUpdateFeedbackStatus() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: feedbackKeys.list() })
+      queryClient.invalidateQueries({ queryKey: feedbackKeys.all })
+    },
+  })
+}
+
+export function useDeleteFeedback() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error, count } = await supabase
+        .from('feedback')
+        .delete({ count: 'exact' })
+        .eq('id', id)
+      if (error) throw error
+      if (count === 0) throw new Error('Delete was blocked — check that the admin delete policy is applied in Supabase.')
+    },
+    onSuccess: (_data, id) => {
+      // Immediately remove the deleted row from the handled view cache so the
+      // table updates without waiting for the background refetch.
+      queryClient.setQueryData<Feedback[]>(feedbackKeys.list('handled'), (old) =>
+        (old ?? []).filter((item) => item.id !== id)
+      )
+      queryClient.invalidateQueries({ queryKey: feedbackKeys.all })
     },
   })
 }

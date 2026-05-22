@@ -127,11 +127,10 @@ Both functions verify JWT + `profiles.role === 'admin'` before using service-rol
 
 ## Known Open Issues (summary)
 
-- **RLS normalised** (migration 14) — all core tables have RLS + correct policies. Remaining gaps: `interests` and `reservations` (no RLS yet); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
+- **RLS normalised** (migrations 14 + 15) — all core tables have RLS + correct policies. Migration 15 adds admin DELETE for `feedback`. Remaining gaps: `interests` and `reservations` (no RLS yet); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
 - **Schema drift:** `items.visibility` exists in production but is absent from `bootstrap.sql`.
-- **Migration gaps:** non-sequential numbering (03, 06, 07, 08, 10, 11, 12, 13, 14). Migrations 08 and 11 for storage are contradictory.
+- **Migration gaps:** non-sequential numbering (03, 06, 07, 08, 10, 11, 12, 13, 14, 15). Migrations 08 and 11 for storage are contradictory.
 - **`send-group-invitation` Edge Function** is documented in `docs/supabase-overview.md` but does not exist on disk.
-- **DEV DIAG logs pending removal** — `Users.tsx` (`getToken`, `fetchUsers`) has temporary `console.log` diagnostics and `retry: false` on the admin-users query. Must be cleaned up before next production deploy. See `docs/ACTIVE_CONTEXT.md`.
 
 Full details and the ordered priority list are in `docs/ACTIVE_CONTEXT.md`.
 Full RLS phased plan is in `docs/RLS_HARDENING_PLAN.md`.
