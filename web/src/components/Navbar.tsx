@@ -24,7 +24,7 @@ export default function Navbar() {
   return (
     <>
     <div className="sticky top-0 z-10 border-b border-base-700 bg-base-800/80 backdrop-blur">
-      <div className="container mx-auto flex items-center justify-between p-3">
+      <div className="max-w-[1800px] mx-auto w-full flex items-center justify-between px-6 py-3">
         {/* Brand */}
         <Link
           to="/"

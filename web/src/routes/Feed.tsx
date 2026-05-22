@@ -36,7 +36,7 @@ export default function Feed() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] gap-4">
           {items.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
