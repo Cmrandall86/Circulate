@@ -13,7 +13,7 @@ export default function ItemCard({ item }: ItemCardProps) {
 
   return (
     <Link to="/item/$id" params={{ id: item.id }} className="block h-full">
-      <Card className="p-4 hover:border-mint-400 transition-colors cursor-pointer h-full flex flex-col">
+      <Card className="p-4 [@media(hover:hover)]:hover:border-mint-400 transition-colors cursor-pointer h-full flex flex-col">
         {imageUrl ? (
           <div className="w-full aspect-[4/5] bg-base-700 rounded-lg mb-4 overflow-hidden flex items-center justify-center">
             <img

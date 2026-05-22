@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useRouterState, useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 import FeedbackModal from '@/features/feedback/FeedbackModal'
 
 export default function Navbar() {
-  const { user } = useAuth()
+  const { user, clearUser } = useAuth()
   const { data: role } = useRole()
   const isAdmin = role === 'admin'
   const router = useRouterState()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const currentPath = router.location.pathname
   const [menuOpen, setMenuOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -20,6 +23,40 @@ export default function Navbar() {
   }
 
   const closeMenu = () => setMenuOpen(false)
+
+  async function handleSignOut() {
+    closeMenu()
+    if (import.meta.env.DEV) console.log('[signout] clicked')
+
+    // Attempt graceful server-side sign-out. In supabase-js v2, all scopes make a
+    // network request. If the access token is already expired/invalid, Supabase returns
+    // 403 and supabase-js surfaces "Auth session missing!". Treat this as non-fatal —
+    // the token is already gone from the server's perspective.
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (import.meta.env.DEV) {
+        console.log('[signout] result:', error?.message ?? 'ok')
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('[signout] unexpected throw:', err)
+    }
+
+    // Force-clear the Supabase auth entry from localStorage.
+    // supabase-js does NOT clear storage when signOut fails (e.g. "Auth session missing!"),
+    // so stale tokens remain and will cause the same 403 on the next sign-in attempt.
+    try {
+      const projectRef = new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split('.')[0]
+      localStorage.removeItem(`sb-${projectRef}-auth-token`)
+      if (import.meta.env.DEV) console.log('[signout] cleared localStorage: sb-' + projectRef + '-auth-token')
+    } catch { /* ignore in environments where localStorage is unavailable */ }
+
+    // Synchronously clear React user state so the Navbar and any guards re-render
+    // immediately to signed-out state — without waiting for onAuthStateChange, which
+    // does not fire when the supabase-js signOut call fails.
+    clearUser()
+    queryClient.clear()
+    navigate({ to: '/' })
+  }
 
   return (
     <>
@@ -71,17 +108,9 @@ export default function Navbar() {
           )}
           {user ? (
             <>
-              <Link
-                to="/new"
-                className={`btn px-3 py-1.5 transition-colors ${
-                  isActive('/new') ? 'btn-accent ring-2 ring-mint-400/50' : 'btn-accent'
-                }`}
-              >
-                New Item
-              </Link>
               <button
                 className="px-3 py-1.5 rounded-2xl border border-base-600 hover:bg-base-700 text-ink-400"
-                onClick={() => supabase.auth.signOut()}
+                onClick={handleSignOut}
               >
                 Sign out
               </button>
@@ -114,15 +143,6 @@ export default function Navbar() {
         <div className="flex sm:hidden items-center gap-2">
           {user ? (
             <>
-              <Link
-                to="/new"
-                className={`btn px-3 py-1.5 transition-colors ${
-                  isActive('/new') ? 'btn-accent ring-2 ring-mint-400/50' : 'btn-accent'
-                }`}
-                onClick={closeMenu}
-              >
-                New Item
-              </Link>
               {/* Hamburger button */}
               <button
                 aria-label="Open menu"
@@ -193,7 +213,7 @@ export default function Navbar() {
           </button>
           <button
             className="py-3 px-2 rounded-lg text-left text-ink-400 hover:bg-base-700 transition-colors"
-            onClick={() => { closeMenu(); supabase.auth.signOut() }}
+            onClick={handleSignOut}
           >
             Sign out
           </button>

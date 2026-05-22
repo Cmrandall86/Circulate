@@ -87,6 +87,8 @@ Circulate/
 - Session via `AuthProvider` → `useAuth()` hook in `web/src/hooks/useAuth.ts`
 - Role stored on `profiles.role` (`'member'` | `'admin'`), loaded via `get_my_role()` RPC → `useRole()`
 - `<AuthGate>` — requires any session; `<AdminGate>` — requires `role === 'admin'`
+- `useAuth()` also exposes `clearUser()` — force-sets `user` to `null` in React state. Use only in sign-out paths where `supabase.auth.signOut()` fails (e.g. expired token) and `onAuthStateChange` SIGNED_OUT is never fired.
+- **supabase-js v2 sign-out quirk:** `signOut()` makes a network request for **all** scopes including `local`. If the access token is expired the server returns 403 / `"Auth session missing!"`. The Navbar `handleSignOut` treats this as non-fatal and proceeds with local cleanup (targeted `localStorage.removeItem`, `clearUser()`, query cache clear, navigate).
 - **Single admin role only. No moderator tier.**
 
 ### Item visibility
@@ -129,6 +131,7 @@ Both functions verify JWT + `profiles.role === 'admin'` before using service-rol
 - **Schema drift:** `items.visibility` exists in production but is absent from `bootstrap.sql`.
 - **Migration gaps:** non-sequential numbering (03, 06, 07, 08, 10, 11, 12, 13, 14). Migrations 08 and 11 for storage are contradictory.
 - **`send-group-invitation` Edge Function** is documented in `docs/supabase-overview.md` but does not exist on disk.
+- **DEV DIAG logs pending removal** — `Users.tsx` (`getToken`, `fetchUsers`) has temporary `console.log` diagnostics and `retry: false` on the admin-users query. Must be cleaned up before next production deploy. See `docs/ACTIVE_CONTEXT.md`.
 
 Full details and the ordered priority list are in `docs/ACTIVE_CONTEXT.md`.
 Full RLS phased plan is in `docs/RLS_HARDENING_PLAN.md`.

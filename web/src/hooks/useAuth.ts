@@ -8,6 +8,9 @@ import { ensureUserBootstrap } from '@/lib/bootstrapUser'
 type AuthContextValue = {
   user: User | null
   loading: boolean
+  /** Force-clear local user state without waiting for onAuthStateChange.
+   *  Use only in sign-out flows where supabase.auth.signOut() fails (e.g. "Auth session missing!"). */
+  clearUser: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -49,7 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ user, loading }), [user, loading])
+  const value = useMemo(
+    () => ({ user, loading, clearUser: () => setUser(null) }),
+    [user, loading],
+  )
 
   return React.createElement(AuthContext.Provider, { value }, children)
 }

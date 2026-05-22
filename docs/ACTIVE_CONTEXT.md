@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 19, 2026
+Last updated: May 21, 2026
 
 ### Document Hierarchy
 
@@ -98,6 +98,7 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 ## 4. Current Technical Debt (short list)
 
+- **DEV DIAG logs in `Users.tsx`** — temporary `console.log` diagnostics and `retry: false` on the admin-users query. **Remove before next production deploy.** Tagged `[admin-users diag]` in `getToken()` / `fetchUsers()`; `retry` comment says "restore default (3) before shipping".
 - **RLS complete for core tables** (migration 14). All core tables have RLS + correct policies. `items.visibility` enforced at DB level. Remaining gaps: `interests` and `reservations` (no RLS); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
@@ -153,6 +154,28 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 - **`UserSearchInput` dropdown fix** (`features/groups/components/UserSearchInput.tsx`) — "No users found" message was logically unreachable because `showDropdown` was set to `filtered.length > 0` but the empty-state branch required `showDropdown && results.length === 0`. Fixed by setting `showDropdown(true)` after any completed search, making both branches reachable.
 - **Feedback admin display_name** (`features/feedback/api.ts`, `routes/admin/Feedback.tsx`) — `useFeedbackList` now enriches results with a second `profiles` query keyed on `user_id`. Admin feedback view shows submitter's display_name; falls back to truncated UUID.
 
+### May 21 2026 session — auth/session robustness + navbar polish
+
+**Root-cause investigation:** `POST /auth/v1/logout 403` on sign-out and `GET /functions/v1/admin-users 401` on the admin page were both caused by a stale/expired Supabase access token. In `@supabase/supabase-js` v2.x, **all** `signOut()` scopes (including `local`) make a network request. When the access token is expired the server returns 403 and supabase-js surfaces `"Auth session missing!"`. Because the signOut call failed, supabase-js did NOT clear localStorage or fire the `SIGNED_OUT` event, leaving `user` stale in React state and the Navbar stuck in signed-in state.
+
+**`useAuth.ts`** — Added `clearUser: () => void` to `AuthContextValue` and the provider value. It synchronously sets `user = null` in React state without waiting for `onAuthStateChange`. Used only as a bypass when `signOut` fails and `SIGNED_OUT` is never fired.
+
+**`Navbar.tsx`** — Replaced fire-and-forget `supabase.auth.signOut()` calls with a single `handleSignOut` async function (shared by desktop and mobile):
+  - Calls `signOut({ scope: 'local' })`, catches any error non-fatally (including `"Auth session missing!"`)
+  - Manually removes `sb-${projectRef}-auth-token` from `localStorage` (targeted removal, not `localStorage.clear()`) — supabase-js leaves this key when signOut fails
+  - Calls `clearUser()` to immediately update React state
+  - Calls `queryClient.clear()` to evict all cached query data
+  - Calls `navigate({ to: '/' })` for SPA navigation
+
+**`Users.tsx` `getToken()`** — Added explicit expiry check: if the stored access token is expired or within 60 s of expiry, `supabase.auth.refreshSession()` is called before the Edge Function fetch. `refreshErr` is now captured and logged. This ensures the `admin-users` Edge Function always receives a live JWT.
+
+**`Navbar.tsx` visual polish** — Removed "New Item" button from navbar (desktop and mobile). The `/new` route and `ItemForm` remain fully accessible.
+
+**`ItemCard.tsx`** — Hover border refined to `[@media(hover:hover)]:hover:border-mint-400` so the highlight does not trigger on touch devices.
+
+**⚠️ DEV DIAG — must remove before next production deploy:**
+`web/src/routes/admin/Users.tsx` contains temporary diagnostic `console.log` calls in `getToken()` / `fetchUsers()` tagged `[admin-users diag]`, and `retry: false` on the admin-users `useQuery`. These must be cleaned up before deploying.
+
 ### May 19 2026 session — RLS normalization (migration 14)
 - **Inspected production RLS state** — discovered RLS was already enabled on all core tables with partial/incorrect policies (`items_select_simple` missing group visibility and admin bypass; `item_images_select` same; `gm_delete` blocking member self-leave; feedback admin policies using unsafe inline profiles subqueries).
 - **`public.user_in_item_groups(item_uuid, user_uuid)`** — canonicalised via `CREATE OR REPLACE`; already SECURITY DEFINER/STABLE in production; migration 14 is now the authoritative source.
@@ -207,7 +230,8 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 2. ~~**Unify item query keys**~~ ✅ Done
 3. ~~**RLS hardening Phase 1**~~ ✅ Done
 4. ~~**Generate Supabase types**~~ ✅ Done
-5. **Deploy `admin-users` Edge Function** — required for Enable Account after `4cb9734` (enable via `PATCH { banned: false }`).
+5. **Remove DEV DIAG logs from `Users.tsx`** — `console.log` calls tagged `[admin-users diag]`, `retry: false` on admin-users query. Must be done before next production deploy.
+6. **Deploy `admin-users` Edge Function** — required for Enable Account after `4cb9734` (enable via `PATCH { banned: false }`).
 6. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
 7. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
 8. ~~**RLS hardening Phase 2+**~~ ✅ Done — migration 14 normalised all core-table policies.
