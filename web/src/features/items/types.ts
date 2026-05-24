@@ -3,7 +3,8 @@ export type ItemFormData = {
   description: string
   condition: string
   category: string
-  approx_location: string
+  /** Per-item override; null inherits owner profile public area. */
+  approx_location: string | null
   visibility: 'public' | 'groups'
   group_ids: string[]
 }

@@ -123,6 +123,9 @@ export default function ItemEdit() {
         item={item}
         isAdminEdit={isAdminEdit}
         onUpdate={isAdminEdit ? handleAdminUpdate : undefined}
+        ownerPublicArea={
+          isAdminEdit ? adminItemQuery.data?.item.owner_public_area ?? null : undefined
+        }
       />
     </div>
   )

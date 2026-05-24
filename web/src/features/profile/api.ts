@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { removeStorageAvatar, uploadAvatar } from '@/lib/avatar'
+import { normalizePublicArea } from '@/lib/publicArea'
 import type { Profile } from '@/lib/types'
 
 export type ProfileUpdateInput = {
@@ -44,7 +45,7 @@ export function useUpdateProfile() {
         .from('profiles')
         .update({
           display_name: input.display_name.trim() || null,
-          public_area: input.public_area.trim() || null,
+          public_area: normalizePublicArea(input.public_area),
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)

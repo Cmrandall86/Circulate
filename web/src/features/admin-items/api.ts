@@ -10,6 +10,7 @@ import { itemKeys } from '@/features/items/api'
 export interface AdminItemDetail {
   item: Item & {
     display_name: string | null
+    owner_public_area: string | null
     item_visibility_groups: ItemVisibilityGroup[]
   }
   images: ItemImageWithUrl[]

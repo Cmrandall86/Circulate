@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { compress } from '@/lib/image'
+import { normalizePublicArea } from '@/lib/publicArea'
 import { refreshItemDetailCaches } from '@/lib/itemQueryCache'
 import type { ItemFormData, ItemVisibilityGroup, ItemImageWithUrl } from './types'
 import type { ItemImage } from '@/lib/types'
@@ -51,7 +52,7 @@ export function useCreateItem() {
           description: input.description,
           condition: input.condition,
           category: input.category,
-          approx_location: input.approx_location,
+          approx_location: normalizePublicArea(input.approx_location ?? ''),
           visibility: input.visibility,
         })
         .select()
@@ -104,7 +105,7 @@ export function useUpdateItem(itemId: string) {
           description: input.description,
           condition: input.condition,
           category: input.category,
-          approx_location: input.approx_location,
+          approx_location: normalizePublicArea(input.approx_location ?? ''),
           visibility: input.visibility,
         })
         .eq('id', itemId)

@@ -6,6 +6,7 @@ import type { Item, ItemImage } from '../lib/types'
 
 export type ItemWithImages = Item & {
   item_images?: (ItemImage & { signed_url?: string })[]
+  owner_public_area?: string | null
 }
 
 export type ArchivedItemWithImages = ItemWithImages & {
@@ -16,6 +17,29 @@ export const feedKeys = {
   all: ['feed'] as const,
   browse: ['feed', 'browse'] as const,
   ownerArchived: ['feed', 'owner-archived'] as const,
+}
+
+async function attachOwnerPublicAreas<T extends { owner_id: string }>(
+  items: T[],
+): Promise<(T & { owner_public_area?: string | null })[]> {
+  const ownerIds = [...new Set(items.map((item) => item.owner_id))]
+  if (ownerIds.length === 0) return items
+
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, public_area')
+    .in('id', ownerIds)
+
+  if (error) throw error
+
+  const byOwner = new Map(
+    (profiles ?? []).map((profile) => [profile.id, profile.public_area as string | null]),
+  )
+
+  return items.map((item) => ({
+    ...item,
+    owner_public_area: byOwner.get(item.owner_id) ?? null,
+  }))
 }
 
 async function attachFirstImageSignedUrl<T extends ItemWithImages>(item: T): Promise<T> {
@@ -34,25 +58,34 @@ async function attachFirstImageSignedUrl<T extends ItemWithImages>(item: T): Pro
   return item
 }
 
-export function useFeed() {
+export function useFeed(isMember: boolean) {
   return useQuery({
-    queryKey: feedKeys.browse,
+    queryKey: [...feedKeys.browse, isMember ? 'member' : 'visitor'] as const,
     queryFn: async (): Promise<ItemWithImages[]> => {
       await recoverExpiredReservations()
 
+      const selectFields = isMember
+        ? `id, title, description, status, created_at, category, owner_id, approx_location,
+          item_images ( id, path, sort_order )`
+        : `id, title, description, status, created_at, category, owner_id,
+          item_images ( id, path, sort_order )`
+
       const { data, error } = await supabase
         .from('items')
-        .select(`
-          id, title, description, status, created_at, category, owner_id,
-          item_images ( id, path, sort_order )
-        `)
+        .select(selectFields)
         .eq('status', 'available')
         .order('created_at', { ascending: false })
         .limit(50)
 
       if (error) throw error
 
-      return Promise.all((data || []).map(attachFirstImageSignedUrl)) as Promise<ItemWithImages[]>
+      const withImages = await Promise.all(
+        (data || []).map(attachFirstImageSignedUrl),
+      ) as ItemWithImages[]
+
+      if (!isMember) return withImages
+
+      return attachOwnerPublicAreas(withImages)
     },
   })
 }
@@ -68,7 +101,7 @@ export function useOwnerArchivedFeed(enabled: boolean) {
       const { data: items, error: itemsError } = await supabase
         .from('items')
         .select(`
-          id, title, description, status, created_at, category, updated_at,
+          id, title, description, status, created_at, category, updated_at, owner_id, approx_location,
           item_images ( id, path, sort_order )
         `)
         .eq('owner_id', user.id)
@@ -92,16 +125,18 @@ export function useOwnerArchivedFeed(enabled: boolean) {
         (reservations ?? []).map((row) => row.item_id)
       )
 
-      return Promise.all(
-        items.map(async (item) => {
-          const withImage = await attachFirstImageSignedUrl(item as ItemWithImages)
-          return {
-            ...withImage,
-            archiveKind: handoffCompleteIds.has(item.id)
-              ? 'handoff_complete'
-              : 'removed',
-          }
-        })
+      return attachOwnerPublicAreas(
+        await Promise.all(
+          items.map(async (item) => {
+            const withImage = await attachFirstImageSignedUrl(item as ItemWithImages)
+            return {
+              ...withImage,
+              archiveKind: handoffCompleteIds.has(item.id)
+                ? 'handoff_complete'
+                : 'removed',
+            }
+          }),
+        ),
       )
     },
   })

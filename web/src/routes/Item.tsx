@@ -20,6 +20,7 @@ import ItemOwnerReservation from '@/features/interests/ItemOwnerReservation'
 import ItemOwnerArchivedActions from '@/features/interests/ItemOwnerArchivedActions'
 import { recoverExpiredReservations, useOwnerArchiveItem } from '@/features/interests/api'
 import type { ItemStatus } from '@/lib/types'
+import { resolveItemPublicArea } from '@/lib/publicArea'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 
@@ -63,14 +64,33 @@ export default function ItemDetail() {
     queryKey: itemKeys.one(id),
     enabled: normalQueryEnabled,
     queryFn: async () => {
+      const { data: { user: sessionUser } } = await supabase.auth.getUser()
+      const itemFields = sessionUser
+        ? '*'
+        : 'id, title, description, condition, category, status, visibility, owner_id, created_at, updated_at'
+
       const { data, error } = await supabase
         .from('items')
-        .select('*, item_visibility_groups(item_id, group_id, tier)')
+        .select(`${itemFields}, item_visibility_groups(item_id, group_id, tier)`)
         .eq('id', id)
         .single()
       if (error) throw error
-      return data as Item & {
-        item_visibility_groups: { item_id: string; group_id: string; tier: number }[]
+
+      let owner_public_area: string | null = null
+      if (sessionUser) {
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('public_area')
+          .eq('id', data.owner_id)
+          .maybeSingle()
+        owner_public_area = ownerProfile?.public_area ?? null
+      }
+
+      return {
+        ...(data as Item & {
+          item_visibility_groups: { item_id: string; group_id: string; tier: number }[]
+        }),
+        owner_public_area,
       }
     },
   })
@@ -88,6 +108,16 @@ export default function ItemDetail() {
   const item = isAdmin ? adminItemQuery.data?.item : normalItemQuery.data
   const images = isAdmin ? adminItemQuery.data?.images : normalImages
   const imagesLoading = isAdmin ? adminItemQuery.isLoading : normalImagesLoading
+
+  const memberPublicArea = user
+    ? resolveItemPublicArea(
+        item?.approx_location,
+        isAdmin
+          ? (item as { owner_public_area?: string | null } | undefined)?.owner_public_area
+          : (normalItemQuery.data as { owner_public_area?: string | null } | undefined)
+              ?.owner_public_area,
+      )
+    : null
 
   const isLoading =
     reservationRecoveryQuery.isLoading ||
@@ -283,8 +313,8 @@ export default function ItemDetail() {
         {item.description && <p className="text-ink-500 mb-4">{item.description}</p>}
         {item.condition && <p className="text-ink-600 mb-2">Condition: {item.condition}</p>}
         {item.category && <p className="text-ink-600 mb-2">Category: {item.category}</p>}
-        {item.approx_location && (
-          <p className="text-ink-600 mb-4">Location: {item.approx_location}</p>
+        {memberPublicArea && (
+          <p className="text-ink-600 mb-4">Area: {memberPublicArea}</p>
         )}
         <ItemInterestActions
           itemId={item.id}

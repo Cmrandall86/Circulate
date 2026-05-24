@@ -15,6 +15,7 @@ interface ItemCardProps {
   archiveKind?: ArchivedItemKind
   interestCount?: number
   hasUnreadInterest?: boolean
+  publicArea?: string | null
 }
 
 export default function ItemCard({
@@ -22,6 +23,7 @@ export default function ItemCard({
   archiveKind,
   interestCount,
   hasUnreadInterest,
+  publicArea,
 }: ItemCardProps) {
   const firstImage = item.item_images?.[0]
   const imageUrl = firstImage?.signed_url || firstImage?.path
@@ -53,6 +55,9 @@ export default function ItemCard({
           <h3 className="text-lg font-semibold text-ink-400 mb-2 line-clamp-2">{item.title}</h3>
           {item.description && (
             <p className="text-ink-600 text-sm mb-2 line-clamp-2">{item.description}</p>
+          )}
+          {publicArea && (
+            <p className="text-ink-600 text-sm mb-2">{publicArea}</p>
           )}
           <div className="flex items-center justify-between mt-auto pt-2 gap-2">
             <div className="flex items-center gap-2 min-w-0">

@@ -5,6 +5,7 @@ import ItemCard from '../components/ItemCard'
 import Button from '../components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { useOwnerInterestIndicators } from '@/features/interests/api'
+import { resolveItemPublicArea } from '@/lib/publicArea'
 
 type FeedView = 'browse' | 'archived'
 
@@ -12,7 +13,7 @@ export default function Feed() {
   const { user, loading: authLoading } = useAuth()
   const [view, setView] = useState<FeedView>('browse')
 
-  const browseQuery = useFeed()
+  const browseQuery = useFeed(!!user)
   const archivedQuery = useOwnerArchivedFeed(!authLoading && !!user && view === 'archived')
   const ownerIndicatorsQuery = useOwnerInterestIndicators(
     !authLoading && !!user && view === 'browse'
@@ -117,6 +118,14 @@ export default function Feed() {
                 }
                 interestCount={ownerIndicator?.interestCount}
                 hasUnreadInterest={ownerIndicator?.hasUnread}
+                publicArea={
+                  user
+                    ? resolveItemPublicArea(
+                        item.approx_location,
+                        item.owner_public_area,
+                      )
+                    : null
+                }
               />
             )
           })}

@@ -5,6 +5,20 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("PROJECT_URL")
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE")!;
 
+function normalizePublicArea(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!trimmed) return null;
+  return trimmed
+    .split(/(\s|,)/)
+    .map((part) => {
+      if (part === " " || part === ",") return part;
+      if (!part) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join("");
+}
+
 const RAW_ALLOWED = Deno.env.get("ALLOW_ORIGINS")
   ?? "http://localhost:5173,https://use-circulate.netlify.app";
 const ALLOWED_ORIGINS = RAW_ALLOWED.split(",").map((s) => s.trim());
@@ -196,7 +210,7 @@ Deno.serve(async (req) => {
 
       const { data: profile } = await admin
         .from("profiles")
-        .select("id, display_name")
+        .select("id, display_name, public_area")
         .eq("id", item.owner_id)
         .single();
 
@@ -225,6 +239,7 @@ Deno.serve(async (req) => {
           item: {
             ...item,
             display_name: profile?.display_name ?? null,
+            owner_public_area: profile?.public_area ?? null,
             item_visibility_groups: visGroups ?? [],
           },
           images: imagesWithUrls,
@@ -283,7 +298,9 @@ Deno.serve(async (req) => {
         if (description !== undefined) fields.description = description;
         if (condition !== undefined) fields.condition = condition;
         if (category !== undefined) fields.category = category;
-        if (approx_location !== undefined) fields.approx_location = approx_location;
+        if (approx_location !== undefined) {
+          fields.approx_location = normalizePublicArea(approx_location);
+        }
         if (visibility !== undefined) fields.visibility = visibility;
 
         if (Object.keys(fields).length > 0) {

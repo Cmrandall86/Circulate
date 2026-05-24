@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -7,6 +7,8 @@ import Card from '@/components/ui/Card'
 import ImageUploader from '@/components/ImageUploader'
 import { useMyGroups } from '@/features/groups/api'
 import { useCreateItem, useUpdateItem, useItemGroups, useItemImages, uploadItemImages, useDeleteImage, updateImageOrder } from './api'
+import { useMyProfile } from '@/features/profile/api'
+import { normalizePublicArea } from '@/lib/publicArea'
 import { refreshItemDetailCaches } from '@/lib/itemQueryCache'
 import { supabase } from '@/lib/supabaseClient'
 import type { Item } from '@/lib/types'
@@ -26,11 +28,14 @@ interface ItemFormProps {
    * Must return { id: string }.
    */
   onUpdate?: (data: import('./types').ItemFormData) => Promise<{ id: string }>
+  /** Owner profile public area when an admin edits another user's item. */
+  ownerPublicArea?: string | null
 }
 
-export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }: ItemFormProps) {
+export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, ownerPublicArea }: ItemFormProps) {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { data: myProfile } = useMyProfile()
   const { data: groups } = useMyGroups()
   const { data: existingVisibilityGroups } = useItemGroups(itemId ?? '')
   const { data: existingImages } = useItemImages(itemId ?? '')
@@ -42,13 +47,18 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }
   const [description, setDescription] = useState('')
   const [condition, setCondition] = useState('')
   const [category, setCategory] = useState('')
-  const [approxLocation, setApproxLocation] = useState('')
+  const [useLocationOverride, setUseLocationOverride] = useState(false)
+  const [locationOverride, setLocationOverride] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'groups'>('public')
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
   const [images, setImages] = useState<ImageFile[]>([])
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([])
   const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [error, setError] = useState('')
+
+  const profilePublicArea = isAdminEdit
+    ? (ownerPublicArea ?? null)
+    : (myProfile?.public_area ?? null)
 
   // Load existing item data for edit mode
   useEffect(() => {
@@ -57,7 +67,9 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }
       setDescription(item.description || '')
       setCondition(item.condition || '')
       setCategory(item.category || '')
-      setApproxLocation(item.approx_location || '')
+      const hasOverride = !!item.approx_location?.trim()
+      setUseLocationOverride(hasOverride)
+      setLocationOverride(item.approx_location?.trim() ?? '')
       setVisibility(item.visibility as 'public' | 'groups' || 'public')
     }
   }, [item])
@@ -102,7 +114,9 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }
       description,
       condition,
       category,
-      approx_location: approxLocation,
+      approx_location: useLocationOverride
+        ? normalizePublicArea(locationOverride)
+        : null,
       visibility,
       group_ids: visibility === 'groups' ? selectedGroupIds : [],
     }
@@ -232,12 +246,45 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }
           />
         </div>
 
-        <Input
-          label="Approximate Location"
-          value={approxLocation}
-          onChange={(e) => setApproxLocation(e.target.value)}
-          placeholder="e.g., Downtown, North Side"
-        />
+        <div className="border-t border-base-700 pt-6 space-y-3">
+          <h3 className="text-lg text-ink-400">Public area</h3>
+          <p className="text-sm text-ink-600">
+            Items use your profile public area by default. Set or update yours in{' '}
+            <Link to="/settings" className="text-mint-400 underline">
+              Settings
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-ink-500">
+            {profilePublicArea
+              ? <>Your profile area: <span className="text-ink-400">{profilePublicArea}</span></>
+              : 'No profile public area set yet.'}
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useLocationOverride}
+              onChange={(e) => setUseLocationOverride(e.target.checked)}
+              disabled={isPending}
+              className="w-4 h-4"
+            />
+            <span className="text-ink-400 text-sm">Use a different area for this item</span>
+          </label>
+          {useLocationOverride && (
+            <>
+              <Input
+                label="Item public area override"
+                value={locationOverride}
+                onChange={(e) => setLocationOverride(e.target.value)}
+                placeholder="e.g. Capitol Hill, Seattle"
+                disabled={isPending}
+              />
+              <p className="text-ink-600 text-sm -mt-4">
+                General neighborhood or city only — never a street address.
+              </p>
+            </>
+          )}
+        </div>
 
         {/* Images section */}
         <div className="border-t border-base-700 pt-6">
