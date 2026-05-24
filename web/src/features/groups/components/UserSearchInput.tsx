@@ -44,32 +44,17 @@ export default function UserSearchInput({
     setIsSearching(true)
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        // Search profiles by display_name only
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name')
-          .ilike('display_name', `%${query}%`)
-          .limit(10)
+        const { data: profiles, error: profilesError } = await supabase.rpc(
+          'search_confirmed_member_profiles',
+          { p_query: query, p_limit: 10 }
+        )
 
         if (profilesError) throw profilesError
 
-        // Get user_ids from auth.users for these profiles to get emails
-        // We need to fetch emails separately since they're in auth.users
-        const profileIds = (profiles ?? []).map(p => p.id)
-        
-        if (profileIds.length === 0) {
-          setResults([])
-          setShowDropdown(true)
-          setIsSearching(false)
-          return
-        }
-
-        // Fetch user emails from auth (via a server-side approach would be better)
-        // For now, we'll use the user_id as a placeholder and fetch email when needed
-        const results = (profiles ?? []).map(profile => ({
+        const results = (profiles ?? []).map((profile) => ({
           id: profile.id,
           display_name: profile.display_name,
-          user_id: profile.id
+          user_id: profile.id,
         }))
 
         // Filter out excluded users

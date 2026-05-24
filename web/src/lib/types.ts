@@ -56,6 +56,7 @@ export interface Interest {
 export interface InterestQueueEntry extends Interest {
   display_name: string | null
   avatar_display_url: string | null
+  mutual_group_names: string[]
 }
 
 export interface Reservation {
@@ -64,7 +65,11 @@ export interface Reservation {
   claimer_id: string
   reserved_at: string
   expires_at?: string
-  status: string
+  status: 'active' | 'cancelled' | 'expired' | 'fulfilled' | string
+}
+
+export interface OwnerReservation extends Reservation {
+  claimer_display_name: string | null
 }
 
 export interface Profile {

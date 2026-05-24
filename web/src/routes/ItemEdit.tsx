@@ -5,6 +5,8 @@ import ItemForm from '@/features/items/ItemForm'
 import type { Item } from '@/lib/types'
 import { useAdminItem, useAdminUpdateItem } from '@/features/admin-items/api'
 import { itemKeys } from '@/features/items/api'
+import { canEditItem } from '@/features/items/status'
+import { useArchivedItemKind } from '@/hooks/useFeed'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 import type { ItemFormData } from '@/features/items/types'
@@ -42,7 +44,13 @@ export default function ItemEdit() {
   const isLoading = isAdmin ? adminItemQuery.isLoading : normalItemQuery.isLoading
   const error = isAdmin ? adminItemQuery.error : normalItemQuery.error
 
-  if (!settled || isLoading) {
+  const { data: archiveKind, isLoading: archiveKindLoading } = useArchivedItemKind(
+    id,
+    item?.status ?? '',
+    settled && !!item && item.status === 'archived'
+  )
+
+  if (!settled || isLoading || (!!item && item.status === 'archived' && archiveKindLoading)) {
     return (
       <div className="max-w-5xl mx-auto py-6">
         <div className="text-ink-500">Loading...</div>
@@ -69,6 +77,25 @@ export default function ItemEdit() {
       <div className="max-w-5xl mx-auto py-6">
         <div className="card p-6">
           <p className="text-ink-500">You do not have permission to edit this item.</p>
+          <button
+            className="mt-4 text-mint-400 underline text-sm"
+            onClick={() => navigate({ to: `/item/${id}` })}
+          >
+            Back to item
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!canEditItem(item.status, archiveKind)) {
+    return (
+      <div className="max-w-5xl mx-auto py-6">
+        <div className="card p-6">
+          <p className="text-ink-500">
+            This item is locked because the handoff is complete. Completed giveaways
+            cannot be edited.
+          </p>
           <button
             className="mt-4 text-mint-400 underline text-sm"
             onClick={() => navigate({ to: `/item/${id}` })}

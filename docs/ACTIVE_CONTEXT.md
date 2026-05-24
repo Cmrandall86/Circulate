@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 23, 2026 (V1 handoff loop — #7 + #8 implemented; #8 manual testing incomplete)
+Last updated: May 23, 2026 (V1 handoff loop complete in code; #5 → #14 next; migrations 21–29)
 
 ### Document Hierarchy
 
@@ -56,7 +56,7 @@ Last updated: May 23, 2026 (V1 handoff loop — #7 + #8 implemented; #8 manual t
 | Settings | `/settings` — display name, avatar, public area stub |
 | Out of V1 | DMs, email/push, invite links, public profile pages, report queue |
 
-**Next unbuilt handoff slices:** #10 reservation → (#11, #12, #13) → #15. Optional #9 mutual groups in queue. Full tracker below §5.
+**Handoff loop:** shipped in code (#2–#4, #6–#13, #15, optional #9 + #11). **Next by issue number:** **#5** (public area HITL — human decision) → **#14** (profile-based location on items). Full tracker below §5.
 
 ---
 
@@ -104,19 +104,23 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 - All image reads go through 1-hour signed URLs
 - Avatar helper: `web/src/lib/avatar.ts` — storage paths vs OAuth URLs
 
-### Item lifecycle (migration 16)
-- Status values: `available` | `reserved` | `claimed` | `archived` (legacy `active` → `available`)
-- UI labels: `web/src/features/items/status.ts`
-- Status **display** on feed + item detail; **transitions** not wired in app yet (no reserve/claim UI — issue #10+)
-- **Manual testing only:** set `items.status` via Supabase SQL editor until #10 ships (e.g. `UPDATE items SET status = 'reserved' WHERE id = '…'`)
+### Item lifecycle (migrations 16–26)
+- Status values: `available` | `reserved` | `claimed` | `archived` (legacy `active` → `available`; **claim → `archived`** via migration 24)
+- UI labels: `web/src/features/items/status.ts`; archived badges: **Handoff complete** vs **Removed** (from fulfilled reservation)
+- **Browse feed:** `available` only; owner **My archived** toggle on feed (`useOwnerArchivedFeed`)
+- **RPCs:** `create_item_reservation`, `cancel_item_reservation`, `recover_expired_reservations`, `mark_item_claimed`, `archive_item`, `reactivate_item` (removed archives only)
+- **Locked edits:** handoff-complete archived items cannot be edited (migration 26 trigger + `canEditItem()`)
 
-### Interests (issues #6–#8)
-- Table: `interests` — one row per `(item_id, user_id)` (migration 18); levels `need` / `like` / `take` (migration 20 CHECK)
-- RLS enabled (migration 17) — insert/update/delete only when item `available` (member author path)
-- **Member UI:** `web/src/features/interests/ItemInterestActions.tsx` — card-style level picker + withdraw
-- **Owner UI:** `web/src/features/interests/ItemInterestQueue.tsx` — sorted queue (level → FIFO), owner + `available` only
-- API: `web/src/features/interests/api.ts` — `useMyInterest`, `useSetInterest`, `useWithdrawInterest`, `useItemInterestQueue`, `sortInterestQueue`
-- Non-owners see only their own interest row in UI; full queue is owner-only (RLS still allows broad read — tighten later if needed)
+### Interests & reservations (issues #6–#13, #11, #15, #9)
+- Table: `interests` — one row per `(item_id, user_id)` (migration 18); levels `need` / `like` / `take` (migration 20)
+- Table: `reservations` — one active per item (migration 21); expiry presets at reserve time (migration 28: 2d / 7d / 14d / none / custom max 30d)
+- RLS: migration 17 + reservation insert tightened in migration 21
+- **Member UI:** `ItemInterestActions.tsx` — level picker, withdraw, reserved/chosen messaging
+- **Owner UI:** `ItemInterestQueue.tsx` — sorted queue, mutual groups per row (#9), reserve modal with expiry picker
+- **Owner reservation panel:** `ItemOwnerReservation.tsx` — cancel, mark claimed
+- **Owner archived panel:** `ItemOwnerArchivedActions.tsx` — return removed archives to feed
+- **Owner indicators:** navbar **New interest** pill + interest count on own feed cards (migration 27)
+- API: `web/src/features/interests/api.ts`
 
 ### Profile settings (issue #4)
 - Route: `/settings` (AuthGate) — display name, avatar upload, optional `public_area`
@@ -128,11 +132,20 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 - Session provided through `AuthProvider` → `useAuth()` hook
 - Role loaded via `get_my_role()` RPC → `useRole()` hook
 - `<AuthGate>` — requires any session; `<AdminGate>` — requires `role === 'admin'`
+- **Email confirmation (migration 29):** `profiles` row created only when `auth.users.email_confirmed_at` is set; trigger on INSERT + UPDATE. Unconfirmed users excluded from group member search (`search_confirmed_member_profiles` RPC) and blocked by `gm_insert` RLS.
 
 ### Groups
 - `groups` owned by a user, many-to-many membership in `group_members`
 - Owner gets a `group_members` row automatically via `add_owner_membership` trigger (migration 06)
 - Item visibility to groups via `item_visibility_groups` join table
+- **Add member search:** `UserSearchInput.tsx` → `search_confirmed_member_profiles` RPC (confirmed users only)
+
+### React Query cache (item detail)
+- Shared `QueryClient` uses **60 s `staleTime`** (`web/src/main.tsx`). `invalidateQueries` marks stale but does not always repaint active views immediately.
+- **Item detail has two fetch paths:** normal client → `itemKeys.one(id)`; admin (including admin-as-owner) → `adminItemKeys.one(id)` via Edge Function. After item mutations, **refetch both keys**.
+- **Canonical helper:** `web/src/lib/itemQueryCache.ts` → `refreshItemDetailCaches(qc, itemId)`. Await before navigating from edit flows; also refetches images + visibility groups.
+- Handoff mutations use the same dual-key pattern in `features/interests/api.ts` (`invalidateItemHandoffQueries`).
+- **Known pitfall:** mutating in `onSuccess` then doing more work (e.g. image upload in `ItemForm`) before navigate — refresh must run **after** all side effects, not only in the mutation hook.
 
 ### Feedback
 - Signed-in users submit feedback from a modal opened via "Feedback" in the navbar (desktop link + mobile hamburger menu)
@@ -175,25 +188,25 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 Work **one slice at a time**; user reviews between each. Issues on GitHub; bodies also in `docs/issues/`.
 
-| Issue | Title | Status |
-|---|---|---|
-| #1 | PRD: V1 Item Handoff Loop | ✅ Published |
-| #2 | Item lifecycle statuses | ✅ Shipped (migration 16) |
-| #3 | RLS for interests & reservations | ✅ Shipped (migration 17) |
-| #4 | Profile settings | ✅ Shipped (migration 19) |
-| #5 | Public area input approach (HITL) | ⏸ Pending human decision |
-| #6 | Express interest (single level) | ✅ Shipped (migration 18) |
-| #7 | Interest levels (need/like/take) | ✅ Shipped (migration 20 + UI polish) |
-| **#8** | **Owner interest queue** | **🧪 Implemented — manual testing incomplete** |
-| #9 | Mutual groups in queue | Blocked by #8 sign-off |
-| #10 | Create reservation (7-day default) | Blocked by #8 sign-off |
-| #11 | Reservation expiry presets | Blocked by #10 |
-| #12 | Cancel + expiry recovery | Blocked by #10 |
-| #13 | Mark claimed + archive | Blocked by #10 |
-| #14 | Profile-based location on items | Blocked by #4 + #5 |
-| #15 | Owner interest indicator | Blocked by #8 |
+| Issue | Title | Status (code) | GitHub |
+|---|---|---|---|
+| #1 | PRD: V1 Item Handoff Loop | ✅ Published | Open |
+| #2 | Item lifecycle statuses | ✅ Shipped (migration 16) | Open — close |
+| #3 | RLS for interests & reservations | ✅ Shipped (migration 17) | Open — close |
+| #4 | Profile settings | ✅ Shipped (migration 19) | Open — close |
+| **#5** | **Public area input (HITL)** | **⏸ Decision only — no code** | **← NEXT (human)** |
+| #6 | Express interest | ✅ Shipped (migration 18) | Open — close |
+| #7 | Interest levels | ✅ Shipped (migration 20) | Open — close |
+| #8 | Owner interest queue | ✅ Shipped | Open — close |
+| #9 | Mutual groups in queue | ✅ Shipped | Open — close |
+| #10 | Create reservation | ✅ Shipped (migration 21) | Open — close |
+| #11 | Reservation expiry presets | ✅ Shipped (migration 28) | Open — close |
+| #12 | Cancel + expiry recovery | ✅ Shipped (migration 22) | Open — close |
+| #13 | Mark claimed + archive | ✅ Shipped (migrations 23–26) | Open — close |
+| **#14** | **Profile-based location on items** | **Not started** | Open — after #5 |
+| #15 | Owner interest indicator | ✅ Shipped (migration 27) | Open — close |
 
-**Recommended order after #8 sign-off:** #10 → (#11, #12, #13 parallel) → #15. Optional #9 after #8. Location track (#5 HITL → #14) can run in parallel.
+**Recommended next session order:** (1) commit + deploy uncommitted handoff work; (2) close shipped GitHub issues #2–#4, #6–#13, #15, #9, #11; (3) **#5** HITL decision → ADR; (4) **#14** implement location slice.
 
 ### Secondary (unchanged)
 
@@ -207,6 +220,50 @@ Work **one slice at a time**; user reviews between each. Issues on GitHub; bodie
 
 ## 6. Recent Major Changes
 
+### May 23 2026 session (continued) — handoff loop completion + auth fix
+
+**Migrations 21–29** (user applies via Supabase SQL editor; see git for files)
+- **21–22** — create / cancel / recover reservations
+- **23–26** — claim, archive, reactivate, lock handoff-complete edits
+- **27** — owner interest indicators (`owner_interests_viewed_at`, navbar pill)
+- **28** — reservation expiry presets on `create_item_reservation`
+- **29** — profiles deferred until email confirmed; confirmed-only member search
+
+**Features shipped (not yet committed to main)**
+- Full handoff loop UI + optional slices #9, #11, #15
+- Navbar **New interest** alert (right side, not on logo)
+- Edit cache fix — `web/src/lib/itemQueryCache.ts` → `refreshItemDetailCaches()`
+- Email signup: unconfirmed users no longer in `profiles` or group search
+
+**Last pushed commit:** `7620419` (through migration 20). **Working tree:** migrations 21–29 + handoff UI uncommitted.
+
+### May 23 2026 session — archive polish + edit cache fix
+
+**Migrations applied (user via SQL editor)**
+- **22** — cancel + expiry recovery
+- **23** — mark claimed + archive RPCs
+- **24** — claim sets `archived`; browse feed `available` only; owner **My archived** toggle
+- **25** — `reactivate_item` (return removed archives to feed)
+- **26** — lock handoff-complete archived items from edits (trigger)
+
+**Features shipped**
+- Cancel reservation, mark claimed, owner archive, archived feed badges (Handoff complete vs Removed)
+- Return to feed for removed archives; edit locked for handoff-complete archives
+- **Edit cache fix** — `refreshItemDetailCaches()`; `ItemForm` awaits refetch of normal + admin item queries (and images) before navigate
+
+### May 23 2026 session — reservation (#10) + queue sign-off (#8)
+
+**Migration applied**
+- **21** — `create_item_reservation` RPC; one active reservation per item; tightened `reservations_insert` RLS
+
+**Features shipped**
+- **#10 Create reservation** — owner Reserve on queue row; atomic `available` → `reserved` + 7-day `expires_at`; claimer / non-claimer member messaging
+- **Post-reserve cache fix** — optimistic status patch + refetch for both normal and admin item queries (platform admin-as-owner no longer needs manual page refresh)
+
+**Manual testing:** #8 and #10 verified in production/dev.
+
+**Decision (locked):** Owner cancel / mistaken-reservation override deferred to **#12** (confirm dialog, `reserved` → `available`, queue preserved). Do not bolt partial cancel onto #10.
+
 ### May 23 2026 session (continued) — interest levels + owner queue
 
 **Migration applied**
@@ -219,20 +276,9 @@ Work **one slice at a time**; user reviews between each. Issues on GitHub; bodie
 **Key files:** `web/src/features/interests/api.ts`, `ItemInterestActions.tsx`, `ItemInterestQueue.tsx`, `web/src/routes/Item.tsx`, `web/src/lib/types.ts` (`InterestLevel`, `InterestQueueEntry`).
 
 **Manual testing status**
-- ✅ #7 interest levels — user verified
-- ⏳ **#8 queue — incomplete.** Remaining checklist:
-  1. Owner on **available** item with no interests → empty queue message
-  2. Another member expresses interest at different levels → queue order correct (`need` first, FIFO within tier)
-  3. As that member → only own interest actions visible, not full queue
-  4. Set item to **`reserved`** via SQL editor → queue hidden; status badge shows Reserved; member sees "not accepting interest"
-  5. Member withdraws or changes level → owner queue updates on refresh
-
-**SQL for #8 reserved-state test (no app UI yet):**
-```sql
-UPDATE public.items SET status = 'reserved' WHERE id = 'ITEM-UUID';
--- revert:
-UPDATE public.items SET status = 'available' WHERE id = 'ITEM-UUID';
-```
+- ✅ #7 interest levels — verified
+- ✅ #8 owner queue — verified (ordering, privacy, reserved hiding)
+- ✅ #10 create reservation — verified (reserve flow, member messaging, immediate UI update after cache fix)
 
 ### May 23 2026 session — agent skills, V1 spec, handoff loop start
 
@@ -352,13 +398,12 @@ UPDATE public.items SET status = 'available' WHERE id = 'ITEM-UUID';
 
 ## 8. Immediate Next Steps
 
-1. **Finish #8 manual testing** — queue ordering, member privacy, reserved-state hiding (SQL editor for `status = 'reserved'` until #10). Sign off #8 when done.
-2. **Issue #10** — Create reservation (owner picks from queue → `reserved` + `reservations` row). Next implementation slice after #8 sign-off.
-3. **Issue #9 (optional)** — Mutual groups hint in queue rows. Can defer until after #10.
-4. **Issue #5 (HITL)** — Decide public area input approach before slice #14. Record in ADR or issue comment.
-5. **Regenerate Supabase types** after migrations 16–20 (optional but recommended before more DB work).
-6. **Deploy frontend** — if #7/#8 changes not yet live on Netlify.
-7. **Branding increments 3–4** — deferred behind V1 handoff.
+1. **Commit + deploy** — large uncommitted diff (migrations 21–29, handoff UI, `itemQueryCache.ts`, email-confirm fix). Redeploy `admin-items` Edge Function if not current (`26` lock check added).
+2. **Close GitHub issues** — #2–#4, #6–#13, #15, #9, #11 shipped; leave #1 open until V1 sign-off.
+3. **Issue #5 (HITL)** — choose public area input approach; record ADR in `docs/adr/` (decision-only slice).
+4. **Issue #14** — profile-based location on items + hide from visitors (after #5).
+5. **Regenerate Supabase types** after migrations 16–29 (optional).
+6. **Verify migration 29** applied in production (email confirm fix).
 
 ---
 

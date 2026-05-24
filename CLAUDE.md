@@ -57,7 +57,7 @@ Circulate/
 │   │   ├── components/           ← Navbar, AuthGate, AdminGate, ImageUploader, ErrorBoundary
 │   │   │   └── ui/               ← Button, Input, Card, Modal, Badge
 │   │   ├── hooks/                ← useAuth, useRole, useFeed
-│   │   ├── lib/                  ← supabaseClient, database.types.ts, image, bootstrapUser
+│   │   ├── lib/                  ← supabaseClient, database.types.ts, image, itemQueryCache, bootstrapUser
 │   │   └── theme/tokens.css      ← CSS custom-property tokens
 └── supabase/
     ├── bootstrap.sql             ← Initial schema (⚠️ has known drift — see README Known Issues)
@@ -76,6 +76,7 @@ Circulate/
 - **Path alias:** `@/*` → `web/src/*`. Always use `@/` for cross-feature imports.
 - **New routes** are declared imperatively in `web/src/main.tsx`. Add to route tree there.
 - **React Query keys** live in `features/*/api.ts` under a `*Keys` const.
+- **Item detail cache refresh:** After any mutation that changes item metadata, images, or visibility, call `refreshItemDetailCaches(qc, itemId)` from `web/src/lib/itemQueryCache.ts`. Item detail uses **two** query keys — normal (`itemKeys.one`) and admin (`adminItemKeys.one`) — depending on role; refresh **both**. With `staleTime: 60_000`, `invalidateQueries` alone often leaves stale UI until a hard refresh; **await `refetchQueries`** on both keys (and images/visibility) before navigating away from edit flows.
 - **Image paths** in the `images` storage bucket are always `items/{itemId}/{filename}`. Never write to other top-level folders.
 - **Never put the Supabase service-role key in any `VITE_*` variable.**
 - **TypeScript is strict** (`noUnusedLocals`, `noUnusedParams`). Run `npm run typecheck` after changes.

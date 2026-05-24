@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { compress } from '@/lib/image'
+import { refreshItemDetailCaches } from '@/lib/itemQueryCache'
 import type { ItemFormData, ItemVisibilityGroup, ItemImageWithUrl } from './types'
 import type { ItemImage } from '@/lib/types'
 
@@ -140,10 +141,8 @@ export function useUpdateItem(itemId: string) {
 
       return item
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: itemKeys.one(itemId) })
-      qc.invalidateQueries({ queryKey: itemKeys.visibilityGroups(itemId) })
+    onSuccess: async () => {
+      await refreshItemDetailCaches(qc, itemId)
     },
   })
 }

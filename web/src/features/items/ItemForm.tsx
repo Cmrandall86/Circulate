@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Card from '@/components/ui/Card'
 import ImageUploader from '@/components/ImageUploader'
 import { useMyGroups } from '@/features/groups/api'
 import { useCreateItem, useUpdateItem, useItemGroups, useItemImages, uploadItemImages, useDeleteImage, updateImageOrder } from './api'
+import { refreshItemDetailCaches } from '@/lib/itemQueryCache'
 import { supabase } from '@/lib/supabaseClient'
 import type { Item } from '@/lib/types'
 import type { ImageFile } from './types'
@@ -28,6 +30,7 @@ interface ItemFormProps {
 
 export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }: ItemFormProps) {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { data: groups } = useMyGroups()
   const { data: existingVisibilityGroups } = useItemGroups(itemId ?? '')
   const { data: existingImages } = useItemImages(itemId ?? '')
@@ -147,8 +150,11 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate }
       if (existingImageIds.length > 0) {
         await updateImageOrder(finalItemId, existingImageIds)
       }
-      
-      // Navigate to the item detail page
+
+      // Refetch after metadata + image changes so item detail shows fresh data
+      // without a manual browser refresh (covers normal + admin query paths).
+      await refreshItemDetailCaches(qc, finalItemId)
+
       navigate({ to: `/item/${finalItemId}` })
     } catch (err: any) {
       setError(err.message || 'Failed to save item')

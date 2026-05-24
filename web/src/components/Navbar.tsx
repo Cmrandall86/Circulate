@@ -4,7 +4,46 @@ import { Link, useRouterState, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
+import { useOwnerInterestIndicators } from '@/features/interests/api'
 import FeedbackModal from '@/features/feedback/FeedbackModal'
+
+function NewInterestNavLink({
+  count,
+  onNavigate,
+  compact = false,
+}: {
+  count: number
+  onNavigate?: () => void
+  compact?: boolean
+}) {
+  if (count <= 0) return null
+
+  const countLabel = count > 9 ? '9+' : String(count)
+  const ariaLabel = `${count} ${count === 1 ? 'item' : 'items'} with new interest`
+
+  return (
+    <Link
+      to="/"
+      onClick={onNavigate}
+      aria-label={ariaLabel}
+      className={`inline-flex items-center rounded-full border border-mint-400/30 bg-mint-400/10 font-medium text-mint-400 transition-colors hover:bg-mint-400/15 hover:text-mint-400 ${
+        compact ? 'gap-1.5 px-2.5 py-1 text-xs' : 'gap-2 px-3 py-1.5 text-sm'
+      }`}
+    >
+      <span className="h-2 w-2 shrink-0 rounded-full bg-mint-400" aria-hidden="true" />
+      {compact ? (
+        <span>Interest · {countLabel}</span>
+      ) : (
+        <>
+          <span>New interest</span>
+          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-mint-400 px-1 text-[10px] font-bold leading-none text-base-900">
+            {countLabel}
+          </span>
+        </>
+      )}
+    </Link>
+  )
+}
 
 export default function Navbar() {
   const { user, clearUser } = useAuth()
@@ -16,6 +55,9 @@ export default function Navbar() {
   const currentPath = router.location.pathname
   const [menuOpen, setMenuOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const { data: ownerIndicators } = useOwnerInterestIndicators(!!user)
+  const unreadInterestItemCount =
+    ownerIndicators?.filter((row) => row.has_unread).length ?? 0
 
   const isActive = (path: string) => {
     if (path === '/') return currentPath === '/'
@@ -67,7 +109,7 @@ export default function Navbar() {
           to="/"
           className={`flex items-center gap-2 font-semibold transition-colors ${isActive('/') ? 'text-mint-400' : 'text-mint-400/70 hover:text-mint-400'}`}
         >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true" className="shrink-0">
             <g stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
               <path d="M20.5 12a8.5 8.5 0 1 1-6-8.12"/>
               <circle cx="20.5" cy="5.2" r="1.6" fill="currentColor" stroke="none"/>
@@ -78,6 +120,9 @@ export default function Navbar() {
 
         {/* ── Desktop nav (sm and up) ── */}
         <div className="hidden sm:flex items-center gap-3">
+          {user && (
+            <NewInterestNavLink count={unreadInterestItemCount} />
+          )}
           {user && (
             <Link
               to="/groups"
@@ -153,6 +198,11 @@ export default function Navbar() {
         <div className="flex sm:hidden items-center gap-2">
           {user ? (
             <>
+              <NewInterestNavLink
+                count={unreadInterestItemCount}
+                compact
+                onNavigate={closeMenu}
+              />
               {/* Hamburger button */}
               <button
                 aria-label="Open menu"

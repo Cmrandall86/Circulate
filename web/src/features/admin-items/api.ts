@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { refreshItemDetailCaches } from '@/lib/itemQueryCache'
 import type { Item } from '@/lib/types'
 import type { ItemFormData, ItemImageWithUrl, ItemVisibilityGroup } from '@/features/items/types'
 import { itemKeys } from '@/features/items/api'
@@ -106,11 +107,8 @@ export function useAdminUpdateItem() {
       })
       return res.json() as Promise<{ ok: boolean; id: string }>
     },
-    onSuccess: (_result, { id }) => {
-      qc.invalidateQueries({ queryKey: adminItemKeys.one(id) })
-      qc.invalidateQueries({ queryKey: adminItemKeys.all })
-      qc.invalidateQueries({ queryKey: itemKeys.one(id) })
-      qc.invalidateQueries({ queryKey: ['feed'] })
+    onSuccess: async (_result, { id }) => {
+      await refreshItemDetailCaches(qc, id)
     },
   })
 }

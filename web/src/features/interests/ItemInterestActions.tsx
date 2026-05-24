@@ -4,9 +4,11 @@ import type { InterestLevel, ItemStatus } from '@/lib/types'
 import {
   INTEREST_LEVEL_ORDER,
   INTEREST_LEVELS,
+  useActiveReservation,
   useMyInterest,
   useSetInterest,
   useWithdrawInterest,
+  formatReservationExpiryLabel,
 } from './api'
 
 type ItemInterestActionsProps = {
@@ -39,9 +41,19 @@ export default function ItemInterestActions({
   authSettled,
 }: ItemInterestActionsProps) {
   const isOwner = !!userId && userId === ownerId
-  const canInteract = authSettled && !!userId && !isOwner && itemStatus === 'available'
+  const isAvailable = itemStatus === 'available'
+  const isReserved = itemStatus === 'reserved'
+  const canViewMemberState =
+    authSettled && !!userId && !isOwner && (isAvailable || isReserved)
 
-  const { data: myInterest, isLoading: interestLoading } = useMyInterest(itemId, canInteract)
+  const { data: myInterest, isLoading: interestLoading } = useMyInterest(
+    itemId,
+    canViewMemberState
+  )
+  const { data: myReservation, isLoading: reservationLoading } = useActiveReservation(
+    itemId,
+    canViewMemberState && isReserved
+  )
   const setInterest = useSetInterest(itemId)
   const withdrawInterest = useWithdrawInterest(itemId)
 
@@ -82,7 +94,64 @@ export default function ItemInterestActions({
     return null
   }
 
-  if (itemStatus !== 'available') {
+  if (isReserved) {
+    if (interestLoading || reservationLoading) {
+      return (
+        <div className="mt-6 text-sm text-ink-600">Loading reservation…</div>
+      )
+    }
+
+    if (myReservation) {
+      return (
+        <section className={panelClassName}>
+          <header className="mb-2 space-y-1">
+            <h3 className="text-base font-medium text-mint-300">You were chosen</h3>
+            <p className="text-sm text-ink-400">
+              The owner reserved this item for you. Coordinate pickup outside the
+              app
+              {myReservation.expires_at ? (
+                <>
+                  {' '}
+                  before{' '}
+                  <span className="text-ink-300">
+                    {formatReservationExpiryLabel(myReservation.expires_at)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  {' '}
+                  — there is{' '}
+                  <span className="text-ink-300">no pickup deadline</span>
+                </>
+              )}
+              .
+            </p>
+          </header>
+        </section>
+      )
+    }
+
+    if (myInterest) {
+      return (
+        <section className={panelClassName}>
+          <p className="text-sm text-ink-600">
+            This item is reserved for someone else. Your interest is still on
+            record if the reservation falls through.
+          </p>
+        </section>
+      )
+    }
+
+    return (
+      <section className={panelClassName}>
+        <p className="text-sm text-ink-600">
+          This item is not accepting interest right now.
+        </p>
+      </section>
+    )
+  }
+
+  if (!isAvailable) {
     return (
       <section className={panelClassName}>
         <p className="text-sm text-ink-600">

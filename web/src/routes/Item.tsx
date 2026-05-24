@@ -12,13 +12,20 @@ import {
   useAdminArchiveItem,
   useAdminDeleteItem,
 } from '@/features/admin-items/api'
-import { itemStatusBadgeVariant, itemStatusLabel } from '@/features/items/status'
+import { itemStatusBadgeVariant, itemStatusLabel, archivedItemBadgeVariant, archivedItemLabel, canEditItem } from '@/features/items/status'
+import { useArchivedItemKind } from '@/hooks/useFeed'
 import ItemInterestActions from '@/features/interests/ItemInterestActions'
 import ItemInterestQueue from '@/features/interests/ItemInterestQueue'
+import ItemOwnerReservation from '@/features/interests/ItemOwnerReservation'
+import ItemOwnerArchivedActions from '@/features/interests/ItemOwnerArchivedActions'
+import { recoverExpiredReservations, useOwnerArchiveItem } from '@/features/interests/api'
+import type { ItemStatus } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 
-type ConfirmAction = 'delete-owner' | 'delete-admin' | 'archive'
+type ConfirmAction = 'delete-owner' | 'delete-admin' | 'archive-owner' | 'archive-admin'
+
+const ARCHIVABLE_STATUSES: ItemStatus[] = ['available', 'reserved']
 
 export default function ItemDetail() {
   const { id } = useParams({ from: '/item/$id' })
@@ -32,8 +39,18 @@ export default function ItemDetail() {
   // This prevents the normal query from firing (and possibly erroring on RLS)
   // before we know the user is an admin.
   const settled = !authLoading && (!user || !roleLoading)
-  const adminQueryEnabled = settled && isAdmin
-  const normalQueryEnabled = settled && !isAdmin
+  const reservationRecoveryQuery = useQuery({
+    queryKey: ['reservations', 'recover'] as const,
+    enabled: settled && !!id,
+    queryFn: async () => {
+      await recoverExpiredReservations()
+      return true
+    },
+    staleTime: 0,
+  })
+  const handoffReady = reservationRecoveryQuery.isSuccess
+  const adminQueryEnabled = settled && isAdmin && handoffReady
+  const normalQueryEnabled = settled && !isAdmin && handoffReady
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null)
@@ -64,6 +81,7 @@ export default function ItemDetail() {
 
   // Mutations
   const ownerDeleteItem = useDeleteItem(id)
+  const ownerArchiveItem = useOwnerArchiveItem(id)
   const adminArchive = useAdminArchiveItem()
   const adminDelete = useAdminDeleteItem()
 
@@ -71,17 +89,46 @@ export default function ItemDetail() {
   const images = isAdmin ? adminItemQuery.data?.images : normalImages
   const imagesLoading = isAdmin ? adminItemQuery.isLoading : normalImagesLoading
 
-  const isLoading = isAdmin ? adminItemQuery.isLoading : normalItemQuery.isLoading
+  const isLoading =
+    reservationRecoveryQuery.isLoading ||
+    (isAdmin ? adminItemQuery.isLoading : normalItemQuery.isLoading)
   const error = isAdmin ? adminItemQuery.error : normalItemQuery.error
 
   const isOwner = !!user && item?.owner_id === user.id
   const canModerate = isOwner || isAdmin
+  const canOwnerArchive =
+    isOwner && !!item && ARCHIVABLE_STATUSES.includes(item.status)
 
-  const isMutating = ownerDeleteItem.isPending || adminArchive.isPending || adminDelete.isPending
+  const { data: archiveKind, isLoading: archiveKindLoading } = useArchivedItemKind(
+    id,
+    item?.status ?? '',
+    settled && !!item && item.status === 'archived'
+  )
+
+  const showEdit =
+    canModerate &&
+    !!item &&
+    canEditItem(item.status, archiveKind) &&
+    !(item.status === 'archived' && archiveKindLoading)
+
+  const isMutating =
+    ownerDeleteItem.isPending ||
+    ownerArchiveItem.isPending ||
+    adminArchive.isPending ||
+    adminDelete.isPending
 
   const statusBadge = item ? (
-    <Badge variant={itemStatusBadgeVariant(item.status)} className="mt-1 shrink-0">
-      {itemStatusLabel(item.status)}
+    <Badge
+      variant={
+        item.status === 'archived' && archiveKind
+          ? archivedItemBadgeVariant(archiveKind)
+          : itemStatusBadgeVariant(item.status)
+      }
+      className="mt-1 shrink-0"
+    >
+      {item.status === 'archived' && archiveKind
+        ? archivedItemLabel(archiveKind)
+        : itemStatusLabel(item.status)}
     </Badge>
   ) : null
 
@@ -94,7 +141,11 @@ export default function ItemDetail() {
       adminDelete.mutate(id, {
         onSuccess: () => navigate({ to: '/' }),
       })
-    } else if (confirmAction === 'archive') {
+    } else if (confirmAction === 'archive-owner') {
+      ownerArchiveItem.mutate(undefined, {
+        onSuccess: () => setConfirmAction(null),
+      })
+    } else if (confirmAction === 'archive-admin') {
       adminArchive.mutate(id, {
         onSuccess: () => setConfirmAction(null),
       })
@@ -103,6 +154,7 @@ export default function ItemDetail() {
 
   const mutationError =
     ownerDeleteItem.error instanceof Error ? ownerDeleteItem.error.message
+    : ownerArchiveItem.error instanceof Error ? ownerArchiveItem.error.message
     : adminDelete.error instanceof Error ? adminDelete.error.message
     : adminArchive.error instanceof Error ? adminArchive.error.message
     : null
@@ -128,13 +180,33 @@ export default function ItemDetail() {
           </div>
 
           {canModerate && (
-            <div className="flex gap-2 shrink-0">
-              {/* Edit — available to owner and admin */}
-              <Link to={`/item/${id}/edit`}>
-                <Button variant="secondary">Edit</Button>
-              </Link>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              {showEdit && (
+                <Link to={`/item/${id}/edit`}>
+                  <Button variant="secondary">Edit</Button>
+                </Link>
+              )}
 
-              {/* Delete */}
+              {canOwnerArchive && (
+                <Button
+                  variant="secondary"
+                  disabled={isMutating}
+                  onClick={() => setConfirmAction('archive-owner')}
+                >
+                  Archive
+                </Button>
+              )}
+
+              {isAdmin && !isOwner && (
+                <Button
+                  variant="secondary"
+                  disabled={isMutating}
+                  onClick={() => setConfirmAction('archive-admin')}
+                >
+                  Archive
+                </Button>
+              )}
+
               <Button
                 variant="danger"
                 disabled={isMutating}
@@ -221,6 +293,19 @@ export default function ItemDetail() {
           userId={user?.id}
           authSettled={settled}
         />
+        <ItemOwnerReservation
+          itemId={item.id}
+          itemStatus={item.status}
+          isOwner={isOwner}
+        />
+        <ItemOwnerArchivedActions
+          itemId={item.id}
+          itemTitle={item.title}
+          itemStatus={item.status}
+          isOwner={isOwner}
+          archiveKind={archiveKind}
+          archiveKindLoading={archiveKindLoading}
+        />
         <ItemInterestQueue
           itemId={item.id}
           itemStatus={item.status}
@@ -240,19 +325,26 @@ export default function ItemDetail() {
             ownerDeleteItem.reset?.()
             adminDelete.reset?.()
             adminArchive.reset?.()
+            ownerArchiveItem.reset?.()
           }
         }}
         title={
-          confirmAction === 'archive'
+          confirmAction === 'archive-owner' || confirmAction === 'archive-admin'
             ? 'Archive item'
             : 'Delete item'
         }
       >
         <div className="space-y-4">
-          {confirmAction === 'archive' && (
+          {(confirmAction === 'archive-owner' || confirmAction === 'archive-admin') && (
             <p className="text-ink-500">
-              Archive <strong className="text-ink-400">"{item.title}"</strong>? It will be hidden
-              from the feed. Images are preserved and the item can be reviewed later.
+              Archive <strong className="text-ink-400">"{item.title}"</strong>? It will be
+              hidden from the feed and will no longer accept interest.
+              {item.status === 'reserved' && (
+                <>
+                  {' '}
+                  Any active reservation will be cancelled.
+                </>
+              )}
             </p>
           )}
           {(confirmAction === 'delete-owner' || confirmAction === 'delete-admin') && (
@@ -280,13 +372,21 @@ export default function ItemDetail() {
               Cancel
             </Button>
             <Button
-              variant={confirmAction === 'archive' ? 'primary' : 'danger'}
+              variant={
+                confirmAction === 'archive-owner' || confirmAction === 'archive-admin'
+                  ? 'primary'
+                  : 'danger'
+              }
               onClick={handleConfirm}
               disabled={isMutating}
             >
               {isMutating
-                ? confirmAction === 'archive' ? 'Archiving…' : 'Deleting…'
-                : confirmAction === 'archive' ? 'Archive' : 'Delete permanently'}
+                ? confirmAction === 'archive-owner' || confirmAction === 'archive-admin'
+                  ? 'Archiving…'
+                  : 'Deleting…'
+                : confirmAction === 'archive-owner' || confirmAction === 'archive-admin'
+                  ? 'Archive'
+                  : 'Delete permanently'}
             </Button>
           </div>
         </div>

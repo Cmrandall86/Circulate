@@ -55,7 +55,17 @@ Follow these rules before and during any implementation work in this repo.
 - For migrations and security changes, explain rollout and rollback.
 - Summaries must include: files changed, behavior changed, commands needed, and risks.
 
-## 8. Stop rule
+## 8. React Query cache (item mutations)
+
+After mutations that change item data shown on `/item/$id` or the feed:
+
+1. Call `refreshItemDetailCaches(qc, itemId)` from `web/src/lib/itemQueryCache.ts`.
+2. **Await** it before navigating away from edit/save flows (`ItemForm` pattern).
+3. Do not invalidate only `itemKeys.one` — admins (including admin-as-owner) read `adminItemKeys.one`.
+
+Handoff mutations in `features/interests/api.ts` follow the same dual-key rule via `invalidateItemHandoffQueries`.
+
+## 9. Stop rule
 
 - After completing the requested task, stop.
 - Do not start the next task.

@@ -1,12 +1,39 @@
+import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useFeed } from '../hooks/useFeed'
+import { useFeed, useOwnerArchivedFeed, type ArchivedItemWithImages } from '../hooks/useFeed'
 import ItemCard from '../components/ItemCard'
 import Button from '../components/ui/Button'
+import { useAuth } from '@/hooks/useAuth'
+import { useOwnerInterestIndicators } from '@/features/interests/api'
+
+type FeedView = 'browse' | 'archived'
 
 export default function Feed() {
-  const { data: items, isLoading, error } = useFeed()
+  const { user, loading: authLoading } = useAuth()
+  const [view, setView] = useState<FeedView>('browse')
 
-  if (isLoading) {
+  const browseQuery = useFeed()
+  const archivedQuery = useOwnerArchivedFeed(!authLoading && !!user && view === 'archived')
+  const ownerIndicatorsQuery = useOwnerInterestIndicators(
+    !authLoading && !!user && view === 'browse'
+  )
+
+  const ownerIndicatorByItemId = useMemo(() => {
+    const map = new Map<string, { interestCount: number; hasUnread: boolean }>()
+    for (const row of ownerIndicatorsQuery.data ?? []) {
+      map.set(row.item_id, {
+        interestCount: row.interest_count,
+        hasUnread: row.has_unread,
+      })
+    }
+    return map
+  }, [ownerIndicatorsQuery.data])
+
+  const isArchivedView = view === 'archived' && !!user
+  const activeQuery = isArchivedView ? archivedQuery : browseQuery
+  const { data: items, isLoading, error } = activeQuery
+
+  if (isLoading || authLoading) {
     return <div className="text-ink-500">Loading feed...</div>
   }
 
@@ -21,25 +48,78 @@ export default function Feed() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl text-ink-400">Feed</h1>
-        <Link to="/new">
-          <Button className="btn-accent">Create Item</Button>
-        </Link>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-3">
+          <h1 className="text-2xl text-ink-400">
+            {isArchivedView ? 'My archived items' : 'Feed'}
+          </h1>
+          {user && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={view === 'browse' ? 'primary' : 'secondary'}
+                onClick={() => setView('browse')}
+              >
+                Browse
+              </Button>
+              <Button
+                variant={view === 'archived' ? 'primary' : 'secondary'}
+                onClick={() => setView('archived')}
+              >
+                My archived
+              </Button>
+            </div>
+          )}
+        </div>
+        {!isArchivedView && (
+          <Link to="/new">
+            <Button className="btn-accent">Create Item</Button>
+          </Link>
+        )}
       </div>
+
+      {isArchivedView && (
+        <p className="text-sm text-ink-600">
+          Archived items are hidden from the public browse feed. Handoff complete
+          means pickup was confirmed; Removed means you archived without completing
+          a handoff.
+        </p>
+      )}
 
       {!items || items.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-ink-600 mb-4">No items yet. Create one to get started!</p>
-          <Link to="/new">
-            <Button className="btn-accent">Create Your First Item</Button>
-          </Link>
+          <p className="text-ink-600 mb-4">
+            {isArchivedView
+              ? 'No archived items yet.'
+              : 'No available items yet. Create one to get started!'}
+          </p>
+          {!isArchivedView && (
+            <Link to="/new">
+              <Button className="btn-accent">Create Your First Item</Button>
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] gap-4">
-          {items.map((item) => (
-            <ItemCard key={item.id} item={item} />
-          ))}
+          {items.map((item) => {
+            const ownerIndicator =
+              user && item.owner_id === user.id
+                ? ownerIndicatorByItemId.get(item.id)
+                : undefined
+
+            return (
+              <ItemCard
+                key={item.id}
+                item={item}
+                archiveKind={
+                  isArchivedView
+                    ? (item as ArchivedItemWithImages).archiveKind
+                    : undefined
+                }
+                interestCount={ownerIndicator?.interestCount}
+                hasUnreadInterest={ownerIndicator?.hasUnread}
+              />
+            )
+          })}
         </div>
       )}
     </div>

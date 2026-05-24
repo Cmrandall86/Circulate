@@ -248,6 +248,33 @@ Deno.serve(async (req) => {
 
       // action: 'update' → full item metadata + visibility group replacement
       if (body.action === "update") {
+        const { data: existingItem, error: fetchErr } = await admin
+          .from("items")
+          .select("status")
+          .eq("id", id)
+          .single();
+
+        if (fetchErr || !existingItem) {
+          return json({ error: fetchErr?.message ?? "Item not found" }, 404, origin);
+        }
+
+        if (existingItem.status === "archived") {
+          const { data: fulfilledReservation } = await admin
+            .from("reservations")
+            .select("id")
+            .eq("item_id", id)
+            .eq("status", "fulfilled")
+            .maybeSingle();
+
+          if (fulfilledReservation) {
+            return json(
+              { error: "Completed handoff items cannot be edited" },
+              403,
+              origin
+            );
+          }
+        }
+
         const { title, description, condition, category, approx_location, visibility, group_ids } =
           body;
 
