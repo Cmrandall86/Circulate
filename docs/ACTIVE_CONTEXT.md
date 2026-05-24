@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 24, 2026 (V1 complete — all slices #2–#15 shipped; RLS Phase 5 done)
+Last updated: May 24, 2026 (V1 complete; V1.5 UI/UX plan published #16–#23)
 
 ### Document Hierarchy
 
@@ -13,7 +13,9 @@ Last updated: May 24, 2026 (V1 complete — all slices #2–#15 shipped; RLS Pha
 | `README.md` | Authoritative project reference (stack, schema, known issues, roadmap) |
 | `docs/ACTIVE_CONTEXT.md` ← **this file** | Primary startup context for all future Cursor sessions |
 | `docs/agents/` | Issue tracker config, triage labels, domain doc consumer rules |
-| `docs/PRD-V1-HANDOFF-LOOP.md` | Local copy of V1 PRD (GitHub issue #1) |
+| `docs/PRD-V1-HANDOFF-LOOP.md` | Local copy of V1 PRD (GitHub issue #1, closed) |
+| `docs/PRD-V1.5-UI-POLISH.md` | Local copy of V1.5 PRD (GitHub issue #16) |
+| `docs/adr/0001-public-area-input.md` | ADR: normalized free-text public area (V1 #5) |
 | `docs/RLS_HARDENING_PLAN.md` | Archival / reference only — consulted when actively implementing RLS phases, not needed at session start |
 
 > **For future sessions:** read `CLAUDE.md` first, then `docs/ACTIVE_CONTEXT.md`. Use `CONTEXT.md` for domain terms. Fetch task-specific docs only when relevant. Work one GitHub slice issue at a time; user reviews between each.
@@ -52,11 +54,12 @@ Last updated: May 24, 2026 (V1 complete — all slices #2–#15 shipped; RLS Pha
 | Item visibility | User chooses public vs groups at post time — no default |
 | Interest levels | `need` / `like` / `take` — queue sorted level → FIFO within tier |
 | Handoff | Interest → owner picks → `reserved` → `claimed`; 7-day default expiry |
-| Location | Profile `public_area` (optional), inherited by items; per-item override in slice #14 |
-| Settings | `/settings` — display name, avatar, public area stub |
+| Location | Profile `public_area` (optional, normalized free text); items inherit; per-item override via `items.approx_location`; hidden from visitors |
+| Settings | `/settings` — display name, avatar, public area |
+| Theme (V1.5) | Light / dark / system toggle in navbar (planned #17–#18) |
 | Out of V1 | DMs, email/push, invite links, public profile pages, report queue |
 
-**Handoff loop:** ✅ Shipped (#2–#15). **V1 engineering backlog:** complete except real-user sign-off (issue #1).
+**V1 handoff loop:** ✅ Shipped and closed (#1–#15). **V1.5 UI/UX polish:** planned (#16–#23); **implement #17 next**.
 
 ---
 
@@ -67,7 +70,7 @@ Last updated: May 24, 2026 (V1 complete — all slices #2–#15 shipped; RLS Pha
 | Frontend | React 18 + TypeScript (strict), Vite 5 |
 | Router | TanStack Router 1.x (imperative route tree in `web/src/main.tsx`) |
 | Server state | TanStack Query 5 (shared `QueryClient`, 60 s `staleTime`) |
-| Styling | Tailwind 3 + CSS custom-property tokens (`web/src/theme/tokens.css`) |
+| Styling | Tailwind 3 + CSS custom-property tokens (`web/src/theme/tokens.css`) — **dark-only today**; V1.5 adds light theme |
 | Backend | Supabase (Postgres 15, Auth, Storage, Edge Functions) |
 | Edge runtime | Deno (Supabase Edge Functions) |
 | Hosting | Netlify (frontend), Supabase Cloud (backend) |
@@ -92,7 +95,8 @@ Two Edge Functions exist. Both verify the caller's JWT and check `profiles.role 
   - `GET /:id` — fetch any item + signed images (bypasses RLS)
   - `PATCH /:id { action: 'archive' }` — set `status = 'archived'`
   - `PATCH /:id { action: 'update' }` — update fields + visibility groups for items the admin doesn't own
-  - `DELETE /:id` — hard delete (storage objects → related rows → item row)
+  - `DELETE /:id` — hard delete item
+  - `DELETE /:itemId/images/:imageId` — single image delete (admin edit of non-owned items; RLS Phase 5)
 
 The **feed does not use the admin-items Edge Function**. Since migration 14 the `items` table has the `items_select` RLS policy, which includes an `OR public.is_admin()` clause so admins see all items in the feed via the normal client. Public items are visible to all users including unauthenticated. Group-visible items are only visible to group members and admins.
 
@@ -122,10 +126,12 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 - **Owner indicators:** navbar **New interest** pill + interest count on own feed cards (migration 27)
 - API: `web/src/features/interests/api.ts`
 
-### Profile settings (issue #4)
-- Route: `/settings` (AuthGate) — display name, avatar upload, optional `public_area`
-- API: `web/src/features/profile/api.ts`
-- Column: `profiles.public_area` (migration 19)
+### Profile, settings & location (#4, #5, #14)
+- Route: `/settings` — display name, avatar upload, optional `public_area`
+- API: `web/src/features/profile/api.ts`; normalization via `web/src/lib/publicArea.ts`
+- Items inherit owner `profiles.public_area`; optional override in `items.approx_location` (null = inherit)
+- Visitors: location omitted from feed/detail queries; members see resolved area on feed + item detail
+- ADR: `docs/adr/0001-public-area-input.md` (normalized free text)
 
 ### Auth
 - Email/password, Google OAuth, Discord OAuth — all working on the new Supabase project
@@ -184,16 +190,40 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 ## 5. Current Active Priorities (ordered)
 
-### Primary: V1 item handoff loop — ✅ COMPLETE (May 24 2026)
+### Primary: V1.5 UI/UX polish (GitHub #16)
 
-All slices shipped. GitHub **#1** (PRD) closes when real-user handoff is confirmed in production.
+Work **one slice at a time**; user reviews between each. PRD: `docs/PRD-V1.5-UI-POLISH.md`.
 
-| Issue | Title | Status |
+| Issue | Title | Blocked by |
 |---|---|---|
-| #1 | PRD: V1 Item Handoff Loop | Open — close after real-user sign-off |
-| #2–#15 | All vertical slices | ✅ Closed |
+| **#16** | PRD: V1.5 UI/UX & Styling | — (parent) |
+| **#17** | Theme foundation | — **start here** |
+| #18 | Navbar theme popover | #17 |
+| #19 | IconButton + Modal | — (can parallel #17) |
+| #20 | Typography scale | #17 |
+| #21 | Feed grid fixed-width | #17, #20 |
+| #22 | Item gallery a11y | #19 |
+| #23 | Core-flow WCAG AA pass | #17–#22 |
 
-### Post-V1 (not blocking launch)
+**Locked V1.5 decisions (grill-me, May 24 2026):**
+
+| Area | Decision |
+|---|---|
+| Theme | Light / dark / **system**; `localStorage`; default system |
+| Theme UI | Navbar popover with 3 labeled options |
+| Light palette | Soft gray page bg, white cards, same mint accent |
+| Feed | Fixed ~260px cards, left-aligned (no stretch on partial rows) |
+| Typography | 4-tier scale: `text-title`, `text-heading`, `text-body`, `text-caption` |
+| A11y | WCAG 2.2 AA on core member flows |
+| Primitives | `IconButton` (44×44px) + upgraded `Modal` (trap, Escape, return focus) |
+
+**Out of V1.5 scope:** admin UI, groups redesign, new fonts, motion overhaul.
+
+### V1 — ✅ COMPLETE (May 24 2026)
+
+All slices #1–#15 closed. RLS Phases 1–5 done. Last commit: `befbed0`.
+
+### Post-V1.5 engineering (not blocking)
 
 - **Migration chain cleanup** — reconcile numbering; fix migration 03; migration 11 idempotent; drop migration 08 policy.
 - **Manual domain types** — gradually reconcile hand-written types with `database.types.ts`.
@@ -203,6 +233,19 @@ All slices shipped. GitHub **#1** (PRD) closes when real-user handoff is confirm
 
 ## 6. Recent Major Changes
 
+### May 24 2026 session — V1.5 UI/UX plan (grill-me + publish)
+
+**Planned (not yet implemented)**
+- Grill-me session locked all V1.5 UX decisions (theme, feed, typography, a11y, delivery)
+- Published GitHub **#16** (PRD) + slice issues **#17–#23**
+- Local copies: `docs/PRD-V1.5-UI-POLISH.md`, `docs/issues/v15-*.md`
+- **Next implement:** #17 (theme foundation) or #19 (IconButton/Modal) in parallel
+
+**Also this session (V1 close-out)**
+- Location slice #14 shipped (`785b8ec`); ADR `0001-public-area-input.md`
+- V1 engineering wrap-up (`befbed0`): RLS Phase 5, bootstrap sync, manifest, eslint cleanup
+- GitHub #1–#15 all closed
+
 ### May 24 2026 session — V1 engineering wrap-up
 
 **Shipped**
@@ -211,7 +254,7 @@ All slices shipped. GitHub **#1** (PRD) closes when real-user handoff is confirm
 - **Branding** — `manifest.json` + link in `index.html`; removed orphaned `eslint.config.js`
 - **Docs** — ACTIVE_CONTEXT, CLAUDE.md, RLS_HARDENING_PLAN marked complete through Phase 5
 
-**Commits:** `785b8ec` (location #14), V1 wrap-up commit pending push
+**Commits:** `785b8ec` (location #14), `befbed0` (V1 wrap-up)
 
 ### May 23 2026 session (continued) — handoff loop completion + auth fix
 
@@ -391,8 +434,11 @@ All slices shipped. GitHub **#1** (PRD) closes when real-user handoff is confirm
 
 ## 8. Immediate Next Steps
 
-1. **Real-user V1 validation** — one complete handoff in a real group; then close GitHub **#1**.
-2. **Post-V1** — migration chain cleanup, type reconciliation, invite links / notifications (new issues).
+1. **Implement V1.5 #17** — theme tokens, `useTheme`, anti-FOUC (`docs/issues/v15-01-theme-foundation.md`)
+2. Optional parallel: **#19** IconButton + Modal (`docs/issues/v15-03-iconbutton-modal.md`)
+3. **Commit planning docs** if not yet on `main`: PRD + `docs/issues/v15-*.md` + ACTIVE_CONTEXT update
+4. One slice at a time → user review → next issue (#18–#23 in order)
+5. **Product validation:** real-user V1 handoff loop in production (ongoing, not blocking V1.5)
 
 ---
 
