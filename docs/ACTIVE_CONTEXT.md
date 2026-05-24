@@ -2,18 +2,29 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 21, 2026 (feedback admin UX + migration 15)
+Last updated: May 23, 2026 (V1 handoff loop — #7 + #8 implemented; #8 manual testing incomplete)
 
 ### Document Hierarchy
 
 | Document | Role |
 |---|---|
-| `CLAUDE.md` | AI agent context document — read every session |
+| `CLAUDE.md` | AI agent context document — read every session (includes agent skills catalog) |
+| `CONTEXT.md` | Domain glossary — canonical product language (from grill-with-docs) |
 | `README.md` | Authoritative project reference (stack, schema, known issues, roadmap) |
 | `docs/ACTIVE_CONTEXT.md` ← **this file** | Primary startup context for all future Cursor sessions |
+| `docs/agents/` | Issue tracker config, triage labels, domain doc consumer rules |
+| `docs/PRD-V1-HANDOFF-LOOP.md` | Local copy of V1 PRD (GitHub issue #1) |
 | `docs/RLS_HARDENING_PLAN.md` | Archival / reference only — consulted when actively implementing RLS phases, not needed at session start |
 
-> **For future sessions:** read `CLAUDE.md` first, then `docs/ACTIVE_CONTEXT.md`. Fetch task-specific docs (e.g. `docs/RLS_HARDENING_PLAN.md`) only when relevant.
+> **For future sessions:** read `CLAUDE.md` first, then `docs/ACTIVE_CONTEXT.md`. Use `CONTEXT.md` for domain terms. Fetch task-specific docs only when relevant. Work one GitHub slice issue at a time; user reviews between each.
+
+### Agent workflow (configured May 23 2026)
+
+- **Skills:** `.agents/skills/` — see `CLAUDE.md` § Agent skills. Key skills: `circulate-safe-change`, `grill-me`, `grill-with-docs`, `to-prd`, `to-issues`, `caveman`.
+- **Issue tracker:** GitHub Issues on `Cmrandall86/Circulate` via `gh` CLI. Config: `docs/agents/issue-tracker.md`.
+- **Triage labels:** `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Config: `docs/agents/triage-labels.md`.
+- **Domain docs:** Single-context — `CONTEXT.md` + `docs/adr/` (ADRs created lazily). Config: `docs/agents/domain.md`.
+- **Process:** One vertical-slice issue at a time → user reviews → next issue. Do not batch multiple slices without approval.
 
 ---
 
@@ -26,6 +37,26 @@ Last updated: May 21, 2026 (feedback admin UX + migration 15)
 - No marketplace mechanics yet — no payments, no shipping, community trust model
 - Production URL: **https://use-circulate.netlify.app**
 - GitHub repo: `Cmrandall86/Circulate`
+
+### V1 product direction (locked May 23 2026 — see issue #1, `CONTEXT.md`)
+
+**Vision:** Trusted-circle giving now; public browse-only feed seeds future stranger-to-stranger sharing (Goodwill-alternative story). Word-of-mouth growth; single platform admin.
+
+**V1 success bar:** One complete handoff loop with real users (post → leveled interest → owner picks → reserved → claimed) without admin intervention.
+
+| Area | V1 decision |
+|---|---|
+| Public feed (visitors) | Browse-only — no interest, no location |
+| Signup | Open + admin oversight (approval queue deferred) |
+| Groups | Owner-add-only membership (no invite links yet) |
+| Item visibility | User chooses public vs groups at post time — no default |
+| Interest levels | `need` / `like` / `take` — queue sorted level → FIFO within tier |
+| Handoff | Interest → owner picks → `reserved` → `claimed`; 7-day default expiry |
+| Location | Profile `public_area` (optional), inherited by items; per-item override in slice #14 |
+| Settings | `/settings` — display name, avatar, public area stub |
+| Out of V1 | DMs, email/push, invite links, public profile pages, report queue |
+
+**Next unbuilt handoff slices:** #10 reservation → (#11, #12, #13) → #15. Optional #9 mutual groups in queue. Full tracker below §5.
 
 ---
 
@@ -67,8 +98,30 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 ### Storage
 - Private bucket: `images`
-- Path convention: `items/{itemId}/{filename}`
+- Path conventions:
+  - Item images: `items/{itemId}/{filename}`
+  - Member avatars: `avatars/{userId}/{filename}` (migration 19)
 - All image reads go through 1-hour signed URLs
+- Avatar helper: `web/src/lib/avatar.ts` — storage paths vs OAuth URLs
+
+### Item lifecycle (migration 16)
+- Status values: `available` | `reserved` | `claimed` | `archived` (legacy `active` → `available`)
+- UI labels: `web/src/features/items/status.ts`
+- Status **display** on feed + item detail; **transitions** not wired in app yet (no reserve/claim UI — issue #10+)
+- **Manual testing only:** set `items.status` via Supabase SQL editor until #10 ships (e.g. `UPDATE items SET status = 'reserved' WHERE id = '…'`)
+
+### Interests (issues #6–#8)
+- Table: `interests` — one row per `(item_id, user_id)` (migration 18); levels `need` / `like` / `take` (migration 20 CHECK)
+- RLS enabled (migration 17) — insert/update/delete only when item `available` (member author path)
+- **Member UI:** `web/src/features/interests/ItemInterestActions.tsx` — card-style level picker + withdraw
+- **Owner UI:** `web/src/features/interests/ItemInterestQueue.tsx` — sorted queue (level → FIFO), owner + `available` only
+- API: `web/src/features/interests/api.ts` — `useMyInterest`, `useSetInterest`, `useWithdrawInterest`, `useItemInterestQueue`, `sortInterestQueue`
+- Non-owners see only their own interest row in UI; full queue is owner-only (RLS still allows broad read — tighten later if needed)
+
+### Profile settings (issue #4)
+- Route: `/settings` (AuthGate) — display name, avatar upload, optional `public_area`
+- API: `web/src/features/profile/api.ts`
+- Column: `profiles.public_area` (migration 19)
 
 ### Auth
 - Email/password, Google OAuth, Discord OAuth — all working on the new Supabase project
@@ -101,7 +154,7 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 ## 4. Current Technical Debt (short list)
 
 - ~~**DEV DIAG logs in `Users.tsx`**~~ ✅ Removed — console.log diagnostics and `retry: false` cleaned up.
-- **RLS complete for core tables** (migration 14). All core tables have RLS + correct policies. `items.visibility` enforced at DB level. Remaining gaps: `interests` and `reservations` (no RLS); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
+- **RLS complete for core tables** (migration 14) + **`interests` / `reservations`** (migration 17). Remaining gap: `useDeleteImage(bypassOwnerCheck: true)` blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
 - **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
 - **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
 - **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files. `feedback` table is now in generated types (regenerated May 19, 2026); `features/feedback/types.ts` hand-written type is kept for narrower `type`/`status` unions that the generator emits as `string`.
@@ -118,18 +171,90 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 ## 5. Current Active Priorities (ordered)
 
-1. ~~**RLS hardening**~~ ✅ Core tables done (migration 14). Remaining: `interests` RLS (Phase 4), `useDeleteImage` admin path (Phase 5).
-3. **Migration chain cleanup** — reconcile into a clean sequential chain; fix migration 03 references to non-existent tables; make migration 11 idempotent; drop the broad-permission migration 08 policy.
-4. **Add `items.visibility` to `bootstrap.sql`** — or replace bootstrap entirely with the migration chain.
-5. ~~**Generate Supabase types**~~ ✅ Done
-6. ~~**Unify item query keys**~~ ✅ Done
-7. ~~**Replace `alert()` with a toast component**~~ ✅ Done
-8. ~~**Add top-level React error boundary** in `main.tsx`.~~ ✅ Done
-9. **ESLint** — either add deps + `lint` script or delete `eslint.config.js`.
+### Primary: V1 item handoff loop (GitHub issue #1)
+
+Work **one slice at a time**; user reviews between each. Issues on GitHub; bodies also in `docs/issues/`.
+
+| Issue | Title | Status |
+|---|---|---|
+| #1 | PRD: V1 Item Handoff Loop | ✅ Published |
+| #2 | Item lifecycle statuses | ✅ Shipped (migration 16) |
+| #3 | RLS for interests & reservations | ✅ Shipped (migration 17) |
+| #4 | Profile settings | ✅ Shipped (migration 19) |
+| #5 | Public area input approach (HITL) | ⏸ Pending human decision |
+| #6 | Express interest (single level) | ✅ Shipped (migration 18) |
+| #7 | Interest levels (need/like/take) | ✅ Shipped (migration 20 + UI polish) |
+| **#8** | **Owner interest queue** | **🧪 Implemented — manual testing incomplete** |
+| #9 | Mutual groups in queue | Blocked by #8 sign-off |
+| #10 | Create reservation (7-day default) | Blocked by #8 sign-off |
+| #11 | Reservation expiry presets | Blocked by #10 |
+| #12 | Cancel + expiry recovery | Blocked by #10 |
+| #13 | Mark claimed + archive | Blocked by #10 |
+| #14 | Profile-based location on items | Blocked by #4 + #5 |
+| #15 | Owner interest indicator | Blocked by #8 |
+
+**Recommended order after #8 sign-off:** #10 → (#11, #12, #13 parallel) → #15. Optional #9 after #8. Location track (#5 HITL → #14) can run in parallel.
+
+### Secondary (unchanged)
+
+- **Migration chain cleanup** — reconcile numbering; fix migration 03; migration 11 idempotent; drop migration 08 policy.
+- **Add `items.visibility` to `bootstrap.sql`**
+- **ESLint** — add deps + `lint` script or delete `eslint.config.js`
+- **`useDeleteImage` admin path** (RLS Phase 5)
+- **Branding increments 3–4** (OG metadata, manifest)
 
 ---
 
 ## 6. Recent Major Changes
+
+### May 23 2026 session (continued) — interest levels + owner queue
+
+**Migration applied**
+- **20** — `interests.state` CHECK constraint (`need` / `like` / `take`)
+
+**Features implemented**
+- **#7 Interest levels** — three-level card picker on item detail; upsert on `(item_id, user_id)`; withdraw; level change blocked when item not `available`. UI polish: stacked cards, separated withdraw button.
+- **#8 Owner interest queue** — `ItemInterestQueue.tsx` on item detail; owner-only, `available` items only; sorted `need` → `like` → `take` then FIFO; rows show display name, avatar, level badge, timestamp.
+
+**Key files:** `web/src/features/interests/api.ts`, `ItemInterestActions.tsx`, `ItemInterestQueue.tsx`, `web/src/routes/Item.tsx`, `web/src/lib/types.ts` (`InterestLevel`, `InterestQueueEntry`).
+
+**Manual testing status**
+- ✅ #7 interest levels — user verified
+- ⏳ **#8 queue — incomplete.** Remaining checklist:
+  1. Owner on **available** item with no interests → empty queue message
+  2. Another member expresses interest at different levels → queue order correct (`need` first, FIFO within tier)
+  3. As that member → only own interest actions visible, not full queue
+  4. Set item to **`reserved`** via SQL editor → queue hidden; status badge shows Reserved; member sees "not accepting interest"
+  5. Member withdraws or changes level → owner queue updates on refresh
+
+**SQL for #8 reserved-state test (no app UI yet):**
+```sql
+UPDATE public.items SET status = 'reserved' WHERE id = 'ITEM-UUID';
+-- revert:
+UPDATE public.items SET status = 'available' WHERE id = 'ITEM-UUID';
+```
+
+### May 23 2026 session — agent skills, V1 spec, handoff loop start
+
+**Agent infrastructure**
+- Added `.agents/skills/` (17 skills) + `CLAUDE.md` § Agent skills
+- Ran `setup-matt-pocock-skills`: `docs/agents/` (GitHub tracker, triage labels, domain layout)
+- GitHub CLI installed + authenticated as `Cmrandall86`
+- Created `CONTEXT.md` domain glossary; published PRD as **issue #1**; broke into slices **issues #2–#15**
+
+**Migrations applied (16–20)**
+- **16** — Item lifecycle statuses (`available`/`reserved`/`claimed`/`archived`)
+- **17** — RLS on `interests` and `reservations`
+- **18** — Unique `(item_id, user_id)` on interests; default level `like`
+- **19** — `profiles.public_area`; avatar storage policies (`avatars/{user_id}/`)
+- **20** — Interest level CHECK (`need`/`like`/`take`) — applied in production
+
+**Features shipped**
+- Item status badges on detail + feed cards (`features/items/status.ts`)
+- Member express interest on available items (`features/interests/`)
+- Profile settings page `/settings` (`features/profile/`, navbar link)
+
+**Manual testing:** #2, #3, #6, #4 verified in production/dev.
 
 ### Prior sessions (summary)
 - Renamed Stuff Cycler → Circulate; migrated to new Supabase project
@@ -227,23 +352,21 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 ## 8. Immediate Next Steps
 
-1. ~~**Deploy `admin-items`**~~ ✅ Done
-2. ~~**Unify item query keys**~~ ✅ Done
-3. ~~**RLS hardening Phase 1**~~ ✅ Done
-4. ~~**Generate Supabase types**~~ ✅ Done
-5. ~~**Remove DEV DIAG logs from `Users.tsx`**~~ ✅ Done.
-6. **Deploy `admin-users` Edge Function** — required for Enable Account after `4cb9734` (enable via `PATCH { banned: false }`).
-6. **Branding Increment 3** — OG/social metadata (`og:title`, `og:description`, `og:image` 1200×630, `twitter:card`). Needs a static preview image generated and placed in `web/public/`.
-7. **Branding Increment 4** — per-route `<title>` tags, `manifest.json`, recruiter demo polish pass.
-8. ~~**RLS hardening Phase 2+**~~ ✅ Done — migration 14 normalised all core-table policies.
+1. **Finish #8 manual testing** — queue ordering, member privacy, reserved-state hiding (SQL editor for `status = 'reserved'` until #10). Sign off #8 when done.
+2. **Issue #10** — Create reservation (owner picks from queue → `reserved` + `reservations` row). Next implementation slice after #8 sign-off.
+3. **Issue #9 (optional)** — Mutual groups hint in queue rows. Can defer until after #10.
+4. **Issue #5 (HITL)** — Decide public area input approach before slice #14. Record in ADR or issue comment.
+5. **Regenerate Supabase types** after migrations 16–20 (optional but recommended before more DB work).
+6. **Deploy frontend** — if #7/#8 changes not yet live on Netlify.
+7. **Branding increments 3–4** — deferred behind V1 handoff.
 
 ---
 
 ## 9. RLS Hardening — Status & Phased Plan
 
-### Current State (as of migration 14)
+### Current State (as of migration 17)
 
-RLS is **enabled on all core tables**. The policy set is now normalised and production-correct:
+RLS is **enabled on all core tables** including `interests` and `reservations`:
 
 | Table | RLS | Key policies |
 |---|---|---|
@@ -254,8 +377,8 @@ RLS is **enabled on all core tables**. The policy set is now normalised and prod
 | `item_visibility_groups` | ✅ | `ivg_select` / `ivg_write` (existing, not changed) |
 | `item_images` | ✅ | `item_images_select` — mirrors item visibility via `user_in_item_groups()` + `is_admin()` |
 | `feedback` | ✅ | Admin policies use `is_admin()`; migration 15 adds admin DELETE policy |
-| `interests` | ❌ | No RLS — Phase 4 |
-| `reservations` | ❌ | No RLS — Phase 4/claim feature |
+| `interests` | ✅ | `interests_select/insert/update/delete` — visibility via items subquery; insert when `available` (migration 17) |
+| `reservations` | ✅ | Owner write; owner + claimer + admin read (migration 17) |
 
 **Helper functions available:**
 - `public.user_in_item_groups(item_uuid, user_uuid)` — SECURITY DEFINER, STABLE; breaks the recursion chain
@@ -290,7 +413,7 @@ This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` 
 | 1 | ~~Audit `items.visibility` distribution~~ — all rows `public`, no nulls | ✅ Done |
 | 2 | ~~Canonicalise `user_in_item_groups()`, add `is_admin()`, patch `gm_delete`~~ (migration 14) | ✅ Done |
 | 3 | ~~Normalise items / item_images / feedback policies~~ (migration 14) | ✅ Done |
-| 4 | Enable RLS on `interests`; audit `ivg_*` and `group_members` policies under load | Pending |
+| 4 | ~~Enable RLS on `interests` and `reservations`~~ (migration 17) | ✅ Done |
 | 5 | Fix `useDeleteImage` admin path (admin edit of non-owned item images) | Pending |
 
 **Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `docs/TEMP-DISABLE-RLS.sql` accessible through Phase 5 as a rollback option.

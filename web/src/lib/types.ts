@@ -14,6 +14,8 @@ export interface GroupMember {
   joined_at: string
 }
 
+export type ItemStatus = 'available' | 'reserved' | 'claimed' | 'archived'
+
 export interface Item {
   id: string
   owner_id: string
@@ -22,7 +24,7 @@ export interface Item {
   condition?: string
   category?: string
   approx_location?: string
-  status: string
+  status: ItemStatus
   publish_at?: string
   created_at: string
   updated_at: string
@@ -41,12 +43,19 @@ export interface ItemVisibilityGroup {
   tier: number
 }
 
+export type InterestLevel = 'need' | 'like' | 'take'
+
 export interface Interest {
   id: string
   item_id: string
   user_id: string
-  state: string
+  state: InterestLevel
   created_at: string
+}
+
+export interface InterestQueueEntry extends Interest {
+  display_name: string | null
+  avatar_display_url: string | null
 }
 
 export interface Reservation {
@@ -63,6 +72,7 @@ export interface Profile {
   display_name?: string
   avatar_url?: string
   role: 'member' | 'admin'
+  public_area?: string | null
   created_at: string
   updated_at: string
 }

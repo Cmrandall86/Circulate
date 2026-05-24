@@ -12,6 +12,9 @@ import {
   useAdminArchiveItem,
   useAdminDeleteItem,
 } from '@/features/admin-items/api'
+import { itemStatusBadgeVariant, itemStatusLabel } from '@/features/items/status'
+import ItemInterestActions from '@/features/interests/ItemInterestActions'
+import ItemInterestQueue from '@/features/interests/ItemInterestQueue'
 import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 
@@ -74,8 +77,13 @@ export default function ItemDetail() {
   const isOwner = !!user && item?.owner_id === user.id
   const canModerate = isOwner || isAdmin
 
-  const isAlreadyArchived = item?.status === 'archived'
   const isMutating = ownerDeleteItem.isPending || adminArchive.isPending || adminDelete.isPending
+
+  const statusBadge = item ? (
+    <Badge variant={itemStatusBadgeVariant(item.status)} className="mt-1 shrink-0">
+      {itemStatusLabel(item.status)}
+    </Badge>
+  ) : null
 
   function handleConfirm() {
     if (confirmAction === 'delete-owner') {
@@ -116,9 +124,7 @@ export default function ItemDetail() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <h1 className="text-3xl font-bold text-ink-400">{item.title}</h1>
-            {isAlreadyArchived && (
-              <Badge variant="default" className="mt-1 shrink-0">archived</Badge>
-            )}
+            {statusBadge}
           </div>
 
           {canModerate && (
@@ -208,7 +214,19 @@ export default function ItemDetail() {
         {item.approx_location && (
           <p className="text-ink-600 mb-4">Location: {item.approx_location}</p>
         )}
-        <div className="text-sm text-ink-600">
+        <ItemInterestActions
+          itemId={item.id}
+          itemStatus={item.status}
+          ownerId={item.owner_id}
+          userId={user?.id}
+          authSettled={settled}
+        />
+        <ItemInterestQueue
+          itemId={item.id}
+          itemStatus={item.status}
+          isOwner={isOwner}
+        />
+        <div className="text-sm text-ink-600 mt-4">
           Created: {new Date(item.created_at).toLocaleDateString()}
         </div>
       </div>

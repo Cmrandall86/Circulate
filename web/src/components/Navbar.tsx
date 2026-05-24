@@ -88,6 +88,16 @@ export default function Navbar() {
               Groups
             </Link>
           )}
+          {user && (
+            <Link
+              to="/settings"
+              className={`transition-colors ${
+                isActive('/settings') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
+              }`}
+            >
+              Settings
+            </Link>
+          )}
           {isAdmin && (
             <Link
               to="/admin/users"
@@ -193,6 +203,15 @@ export default function Navbar() {
             onClick={closeMenu}
           >
             Groups
+          </Link>
+          <Link
+            to="/settings"
+            className={`py-3 px-2 rounded-lg transition-colors ${
+              isActive('/settings') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+            }`}
+            onClick={closeMenu}
+          >
+            Settings
           </Link>
           {isAdmin && (
             <Link

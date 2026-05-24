@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { Item, ItemImage } from '../lib/types'
+import { itemStatusBadgeVariant, itemStatusLabel } from '@/features/items/status'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 
@@ -34,8 +35,8 @@ export default function ItemCard({ item }: ItemCardProps) {
             <p className="text-ink-600 text-sm mb-2 line-clamp-2">{item.description}</p>
           )}
           <div className="flex items-center justify-between mt-auto pt-2">
-            <Badge variant={item.status === 'active' ? 'success' : 'default'}>
-              {item.status}
+            <Badge variant={itemStatusBadgeVariant(item.status)}>
+              {itemStatusLabel(item.status)}
             </Badge>
             {item.category && (
               <span className="text-ink-600 text-sm">{item.category}</span>

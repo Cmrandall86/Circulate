@@ -34,8 +34,10 @@ A private-first community item-sharing platform. Users post items they want to g
 ```
 Circulate/
 ├── CLAUDE.md                     ← this file
+├── .agents/skills/               ← project agent skills (read when relevant)
 ├── README.md                     ← user-facing project reference
 ├── docs/                         ← all documentation
+│   ├── agents/                   ← issue tracker, triage labels, domain doc config
 │   ├── ACTIVE_CONTEXT.md         ← engineering working memory (read every session)
 │   ├── RLS_HARDENING_PLAN.md     ← RLS phase plan (read only when doing RLS work)
 │   ├── supabase-overview.md      ← Supabase backend overview
@@ -125,6 +127,78 @@ Both functions verify JWT + `profiles.role === 'admin'` before using service-rol
 
 ---
 
+## Agent skills
+
+Project-specific agent skills live in `.agents/skills/`. They reduce hallucinations, tighten scope, save tokens, and keep work aligned with how Circulate actually works. **When a skill applies, read its `SKILL.md` and follow it** — do not reconstruct steps from memory.
+
+### Suggest before you start
+
+At the start of a session — or as soon as the user's intent is clear — **propose the best-matching skill(s) in one short sentence** before reading files or editing code. Wait for approval before starting a grilling session, publishing a PRD, or breaking work into issues unless the user explicitly asked for that workflow.
+
+| User intent | Suggest |
+|---|---|
+| Vague feature, product direction, or "what should this do?" | `grill-me` or `grill-with-docs` |
+| Plan exists; stress-test against domain language and docs | `grill-with-docs` |
+| Conversation is ready to become a spec | `to-prd` → then `to-issues` |
+| Any code change in this repo | `circulate-safe-change` (+ `supabase` if backend) |
+| Bug, regression, or "something is broken" | `diagnose` |
+| Quick surgical fix; user wants terse replies | `caveman` |
+| Explore UI or state-machine options before committing | `prototype` |
+| Test-first implementation | `tdd` |
+| Hand off to another session/agent | `handoff` |
+
+### Issue tracker
+
+GitHub Issues on `Cmrandall86/Circulate` via `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles with default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` + `docs/adr/` at repo root (created lazily during grilling). See `docs/agents/domain.md`.
+
+### Recommended workflows
+
+**Extract full product scope (preferred for new features):**
+
+1. **`grill-me`** — interview the user one question at a time until the decision tree is resolved. Use when the idea is still in the user's head.
+2. **`grill-with-docs`** — same grilling, but challenge terms against the codebase, sharpen vocabulary, and update `CONTEXT.md` / `docs/adr/` inline as decisions land. Prefer this once domain language matters or the feature touches existing concepts.
+3. **`to-prd`** — synthesize the conversation into a PRD and publish to the issue tracker (does not re-interview).
+4. **`to-issues`** — break the PRD into independently grabbable vertical-slice tickets.
+5. **`circulate-safe-change`** (+ `supabase` / `tdd` as needed) — implement.
+
+**Quick edits:** When the user invokes caveman mode (`caveman`, `/caveman`, "less tokens", "be brief"), read `.agents/skills/caveman/SKILL.md` and stay in terse mode until they say "stop caveman" or "normal mode".
+
+**Implementation baseline:** For any production edit, read `.agents/skills/circulate-safe-change/SKILL.md` first — it encodes this repo's scope, Supabase safety, and verification rules.
+
+### Skill catalog
+
+| Skill | Path | Use when |
+|---|---|---|
+| circulate-safe-change | `.agents/skills/circulate-safe-change/SKILL.md` | Before any implementation change in this repo |
+| grill-me | `.agents/skills/grill-me/SKILL.md` | Stress-test a plan via one-at-a-time interview |
+| grill-with-docs | `.agents/skills/grill-with-docs/SKILL.md` | Grill + align terminology; update `CONTEXT.md` / ADRs |
+| caveman | `.agents/skills/caveman/SKILL.md` | Ultra-compressed communication for quick edits |
+| to-prd | `.agents/skills/to-prd/SKILL.md` | Turn conversation context into a published PRD |
+| to-issues | `.agents/skills/to-issues/SKILL.md` | Break a plan or PRD into implementation issues |
+| setup-matt-pocock-skills | `.agents/skills/setup-matt-pocock-skills/SKILL.md` | One-time repo config for issue-tracker skills |
+| triage | `.agents/skills/triage/SKILL.md` | Create, triage, or route issues through workflow states |
+| diagnose | `.agents/skills/diagnose/SKILL.md` | Hard bugs or performance regressions |
+| prototype | `.agents/skills/prototype/SKILL.md` | Throwaway UI or logic prototype before committing |
+| tdd | `.agents/skills/tdd/SKILL.md` | Red-green-refactor / test-first development |
+| supabase | `.agents/skills/supabase/SKILL.md` | Any Supabase task (DB, auth, RLS, Edge Functions, storage) |
+| supabase-postgres-best-practices | `.agents/skills/supabase-postgres-best-practices/SKILL.md` | Query/schema performance review |
+| improve-codebase-architecture | `.agents/skills/improve-codebase-architecture/SKILL.md` | Find deep-module / refactoring opportunities |
+| handoff | `.agents/skills/handoff/SKILL.md` | Compact session into a handoff doc |
+| zoom-out | `.agents/skills/zoom-out/SKILL.md` | Need higher-level context on unfamiliar code |
+| write-a-skill | `.agents/skills/write-a-skill/SKILL.md` | Author a new agent skill |
+
+Bundled reference files (e.g. `grill-with-docs/CONTEXT-FORMAT.md`, `grill-with-docs/ADR-FORMAT.md`) are read only when the parent skill calls for them.
+
+---
+
 ## Known Open Issues (summary)
 
 - **RLS normalised** (migrations 14 + 15) — all core tables have RLS + correct policies. Migration 15 adds admin DELETE for `feedback`. Remaining gaps: `interests` and `reservations` (no RLS yet); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
@@ -142,4 +216,6 @@ Full RLS phased plan is in `docs/RLS_HARDENING_PLAN.md`.
 For any non-trivial session, read in this order:
 1. `CLAUDE.md` (this file) — always
 2. `docs/ACTIVE_CONTEXT.md` — always
-3. Task-specific docs only when relevant (e.g. `docs/RLS_HARDENING_PLAN.md` for RLS/migration work)
+3. **Propose a relevant agent skill** from `.agents/skills/` (see [Agent skills](#agent-skills)) — before reading extra files or editing code
+4. Task-specific docs only when relevant (e.g. `docs/RLS_HARDENING_PLAN.md` for RLS/migration work)
+5. `docs/agents/*.md` — when using `to-prd`, `to-issues`, or `triage`

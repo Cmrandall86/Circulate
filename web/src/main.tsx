@@ -14,6 +14,7 @@ import SignIn from './routes/SignIn'
 import SignUp from './routes/SignUp'
 import ResetPassword from './routes/ResetPassword'
 import AdminUsers from './routes/admin/Users'
+import Settings from './routes/Settings'
 import AuthGate from '@/components/AuthGate'
 import AdminGate from '@/components/AdminGate'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -67,6 +68,16 @@ const signInRoute = createRoute({ getParentRoute: () => rootRoute, path: '/signi
 const signUpRoute = createRoute({ getParentRoute: () => rootRoute, path: '/signup', component: SignUp })
 const resetPasswordRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reset-password', component: ResetPassword })
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  component: () => (
+    <AuthGate>
+      <Settings />
+    </AuthGate>
+  ),
+})
+
 const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/users',
@@ -86,6 +97,7 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   signUpRoute,
   resetPasswordRoute,
+  settingsRoute,
   adminUsersRoute,
 ])
 
