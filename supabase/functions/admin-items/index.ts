@@ -323,6 +323,33 @@ Deno.serve(async (req) => {
       return json({ error: "Unsupported action. Expected 'archive' or 'update'." }, 400, origin);
     }
 
+    // ─── DELETE "/:itemId/images/:imageId" → single image (admin edit) ───────
+    const imageDeleteMatch = pathname.match(/^\/([^/]+)\/images\/([^/]+)$/);
+    if (req.method === "DELETE" && imageDeleteMatch) {
+      const [, itemId, imageId] = imageDeleteMatch;
+
+      const { data: image, error: imageErr } = await admin
+        .from("item_images")
+        .select("id, path, item_id")
+        .eq("id", imageId)
+        .eq("item_id", itemId)
+        .single();
+
+      if (imageErr || !image) {
+        return json({ error: "Image not found" }, 404, origin);
+      }
+
+      const { error: storageErr } = await admin.storage.from("images").remove([image.path]);
+      if (storageErr) {
+        console.error("Storage removal error:", storageErr.message);
+      }
+
+      const { error: dbErr } = await admin.from("item_images").delete().eq("id", imageId);
+      if (dbErr) return json({ error: dbErr.message }, 500, origin);
+
+      return json({ ok: true, id: imageId }, 200, origin);
+    }
+
     // ─── DELETE "/:id" → hard delete: storage → related rows → item ───────────
     if (req.method === "DELETE" && pathname !== "/") {
       const id = pathname.slice(1);

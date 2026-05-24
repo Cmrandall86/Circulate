@@ -202,8 +202,8 @@ Bundled reference files (e.g. `grill-with-docs/CONTEXT-FORMAT.md`, `grill-with-d
 
 ## Known Open Issues (summary)
 
-- **RLS normalised** (migrations 14 + 15) — all core tables have RLS + correct policies. Migration 15 adds admin DELETE for `feedback`. Remaining gaps: `interests` and `reservations` (no RLS yet); `useDeleteImage(bypassOwnerCheck: true)` uses normal client and is blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
-- **Schema drift:** `items.visibility` exists in production but is absent from `bootstrap.sql`.
+- **RLS normalised** (migrations 14 + 15 + 17) — all core tables have RLS + correct policies. Migration 15 adds admin DELETE for `feedback`. ~~Admin image delete gap~~ ✅ Phase 5 — `useDeleteImage(bypassOwnerCheck)` routes through `admin-items` Edge Function.
+- **Schema drift:** `bootstrap.sql` updated with `items.visibility`, `profiles.public_area`, lifecycle status defaults (May 24 2026). Migration `03` still references non-existent invitation tables — post-V1 cleanup only.
 - **Migration gaps:** non-sequential numbering (03, 06, 07, 08, 10, 11, 12, 13, 14, 15). Migrations 08 and 11 for storage are contradictory.
 - **`send-group-invitation` Edge Function** is documented in `docs/supabase-overview.md` but does not exist on disk.
 

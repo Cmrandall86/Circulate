@@ -15,8 +15,8 @@ RLS is **enabled on all core tables** with a normalised, production-correct poli
 | `item_visibility_groups` | ✅ | `ivg_select` / `ivg_write` (existing) |
 | `item_images` | ✅ | `item_images_select` mirrors item visibility |
 | `feedback` | ✅ | Admin policies use `is_admin()` |
-| `interests` | ❌ | Phase 4 |
-| `reservations` | ❌ | Phase 4 / claim feature |
+| `interests` | ✅ | Phase 4 — migration 17 |
+| `reservations` | ✅ | Phase 4 — migration 17 |
 
 `items.visibility` is now **enforced at the DB level**. The recursion problem is solved.
 
@@ -79,13 +79,9 @@ $$;
 
 ---
 
-## Known Gap: Admin Image Deletion
+## Known Gap: Admin Image Deletion ✅ Fixed (May 24 2026)
 
-`useDeleteImage(bypassOwnerCheck: true)` bypasses the frontend owner check but still uses the normal Supabase client. Once `item_images` has RLS, storage `DELETE` calls from that hook will be rejected by policy.
-
-- Full-item admin delete via Edge Function (service role) is **not affected**.
-- Only affected case: individual image removal during an admin's edit of a non-owned item.
-- This can be **deferred to Phase 5**.
+Admin single-image delete during non-owned item edits routes through `admin-items` Edge Function (`DELETE /:itemId/images/:imageId`). Frontend: `useDeleteImage({ bypassOwnerCheck: true })` calls the Edge Function instead of the normal Supabase client.
 
 ---
 
@@ -108,13 +104,12 @@ $$;
 
 > Phases 2 and 3 were applied in a single migration (14_rls_normalization.sql) because production RLS was already enabled on all core tables with incomplete policies — the work was corrective rather than additive.
 
-### Phase 4 — Enable RLS on Remaining Tables (Pending)
-1. Enable RLS on `interests` with appropriate read/write policies.
-2. Audit `ivg_*` and `group_members` policies under load.
-3. `reservations` — policy design depends on claim feature design.
+### Phase 4 — Enable RLS on Remaining Tables ✅ Done (migration 17)
+1. ~~Enable RLS on `interests` with appropriate read/write policies.~~
+2. ~~Enable RLS on `reservations` with owner/claimer/admin policies.~~
 
-### Phase 5 — Admin Image Deletion Fix (Pending)
-1. `useDeleteImage(bypassOwnerCheck: true)` uses normal client; blocked by `item_images_write` for admin edits of non-owned items. Update to use service-role path or route through `admin-items` Edge Function.
+### Phase 5 — Admin Image Deletion Fix ✅ Done (May 24 2026)
+1. ~~`useDeleteImage(bypassOwnerCheck: true)` blocked by `item_images_write`.~~ Routed through `admin-items` Edge Function with service-role.
 
 ---
 

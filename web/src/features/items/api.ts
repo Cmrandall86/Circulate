@@ -324,18 +324,36 @@ export function useDeleteImage() {
       if (fetchError) throw fetchError
       if (!image) throw new Error('Image not found')
 
-      if (!bypassOwnerCheck) {
-        // Verify user owns the item (skip for admin callers)
-        const { data: item } = await supabase
-          .from('items')
-          .select('owner_id')
-          .eq('id', image.item_id)
-          .single()
-        
-        const { data: { user } } = await supabase.auth.getUser()
-        if (item?.owner_id !== user?.id) {
-          throw new Error('Not authorized to delete this image')
+      if (bypassOwnerCheck) {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token ?? ''
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-items/${itemId}/images/${imageId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+            },
+          },
+        )
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error((err as { error?: string }).error ?? `Delete failed: ${res.status}`)
         }
+        return
+      }
+
+      // Verify user owns the item
+      const { data: item } = await supabase
+        .from('items')
+        .select('owner_id')
+        .eq('id', image.item_id)
+        .single()
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (item?.owner_id !== user?.id) {
+        throw new Error('Not authorized to delete this image')
       }
 
       // Delete from storage

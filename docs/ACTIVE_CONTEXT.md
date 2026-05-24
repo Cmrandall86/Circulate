@@ -2,7 +2,7 @@
 
 > Internal engineering working memory. Summarises project state, decisions, and priorities for new Cursor chats. Not a user-facing document. For full detail see `README.md`.
 
-Last updated: May 23, 2026 (V1 handoff loop complete in code; #5 → #14 next; migrations 21–29)
+Last updated: May 24, 2026 (V1 complete — all slices #2–#15 shipped; RLS Phase 5 done)
 
 ### Document Hierarchy
 
@@ -56,7 +56,7 @@ Last updated: May 23, 2026 (V1 handoff loop complete in code; #5 → #14 next; m
 | Settings | `/settings` — display name, avatar, public area stub |
 | Out of V1 | DMs, email/push, invite links, public profile pages, report queue |
 
-**Handoff loop:** shipped in code (#2–#4, #6–#13, #15, optional #9 + #11). **Next by issue number:** **#5** (public area HITL — human decision) → **#14** (profile-based location on items). Full tracker below §5.
+**Handoff loop:** ✅ Shipped (#2–#15). **V1 engineering backlog:** complete except real-user sign-off (issue #1).
 
 ---
 
@@ -167,15 +167,15 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 ## 4. Current Technical Debt (short list)
 
 - ~~**DEV DIAG logs in `Users.tsx`**~~ ✅ Removed — console.log diagnostics and `retry: false` cleaned up.
-- **RLS complete for core tables** (migration 14) + **`interests` / `reservations`** (migration 17). Remaining gap: `useDeleteImage(bypassOwnerCheck: true)` blocked by `item_images_write` for admin edits on non-owned items (Phase 5).
-- **Schema drift**: `items.visibility` column exists in production but is absent from `bootstrap.sql`. Migration `03` references tables (`group_invitations`, `group_join_requests`) that don't exist.
-- **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory.
+- **RLS complete for core tables** (migration 14) + **`interests` / `reservations`** (migration 17). ~~Admin image delete gap~~ ✅ Phase 5 — admin single-image delete routes through `admin-items` Edge Function when `bypassOwnerCheck: true`.
+- ~~**Schema drift**: `items.visibility` absent from `bootstrap.sql`~~ ✅ Fixed in bootstrap (May 24 2026).
+- **Migration gaps**: non-sequential numbering (03, 06, 07, 08, 10, 11); migrations 08 and 11 for storage are contradictory. *(Post-V1 cleanup — do not reorder applied migrations.)*
 - **Manual domain types**: `web/src/lib/types.ts` and feature `types.ts` files are still hand-written. Generated types are now wired (`database.types.ts` + `createClient<Database>()`), but hand-written types remain and should be gradually reconciled. Known gaps: `Item` missing `visibility`; `Group`/`GroupMember`/`ItemVisibilityGroup` duplicated across files. `feedback` table is now in generated types (regenerated May 19, 2026); `features/feedback/types.ts` hand-written type is kept for narrower `type`/`status` unions that the generator emits as `string`.
 - ~~**Query key inconsistency**~~: item detail/edit now use `itemKeys.one(id)` = `['items', id]` everywhere. Fixed.
 - ~~**`get_user_email()` PII risk**~~ — fixed in migration 12; function now restricted to admin callers only.
 - `zod` installed but never used.
 - No `typecheck` script was missing (now added: `"typecheck": "tsc --noEmit"`).
-- `eslint.config.js` is orphaned — no ESLint packages in `package.json`.
+- ~~`eslint.config.js` is orphaned~~ ✅ Removed (no ESLint packages in `package.json`).
 - No test runner. ~~No error boundary~~ ✅. ~~`alert()` still used in several flows~~ ✅.
 - ~~`web/README.md` is still the default Vite template.~~ ✅ Deleted.
 - `send-group-invitation` Edge Function is documented in `docs/supabase-overview.md` but does not exist.
@@ -184,41 +184,34 @@ The **feed does not use the admin-items Edge Function**. Since migration 14 the 
 
 ## 5. Current Active Priorities (ordered)
 
-### Primary: V1 item handoff loop (GitHub issue #1)
+### Primary: V1 item handoff loop — ✅ COMPLETE (May 24 2026)
 
-Work **one slice at a time**; user reviews between each. Issues on GitHub; bodies also in `docs/issues/`.
+All slices shipped. GitHub **#1** (PRD) closes when real-user handoff is confirmed in production.
 
-| Issue | Title | Status (code) | GitHub |
-|---|---|---|---|
-| #1 | PRD: V1 Item Handoff Loop | ✅ Published | Open |
-| #2 | Item lifecycle statuses | ✅ Shipped (migration 16) | Open — close |
-| #3 | RLS for interests & reservations | ✅ Shipped (migration 17) | Open — close |
-| #4 | Profile settings | ✅ Shipped (migration 19) | Open — close |
-| **#5** | **Public area input (HITL)** | **⏸ Decision only — no code** | **← NEXT (human)** |
-| #6 | Express interest | ✅ Shipped (migration 18) | Open — close |
-| #7 | Interest levels | ✅ Shipped (migration 20) | Open — close |
-| #8 | Owner interest queue | ✅ Shipped | Open — close |
-| #9 | Mutual groups in queue | ✅ Shipped | Open — close |
-| #10 | Create reservation | ✅ Shipped (migration 21) | Open — close |
-| #11 | Reservation expiry presets | ✅ Shipped (migration 28) | Open — close |
-| #12 | Cancel + expiry recovery | ✅ Shipped (migration 22) | Open — close |
-| #13 | Mark claimed + archive | ✅ Shipped (migrations 23–26) | Open — close |
-| **#14** | **Profile-based location on items** | **Not started** | Open — after #5 |
-| #15 | Owner interest indicator | ✅ Shipped (migration 27) | Open — close |
+| Issue | Title | Status |
+|---|---|---|
+| #1 | PRD: V1 Item Handoff Loop | Open — close after real-user sign-off |
+| #2–#15 | All vertical slices | ✅ Closed |
 
-**Recommended next session order:** (1) commit + deploy uncommitted handoff work; (2) close shipped GitHub issues #2–#4, #6–#13, #15, #9, #11; (3) **#5** HITL decision → ADR; (4) **#14** implement location slice.
-
-### Secondary (unchanged)
+### Post-V1 (not blocking launch)
 
 - **Migration chain cleanup** — reconcile numbering; fix migration 03; migration 11 idempotent; drop migration 08 policy.
-- **Add `items.visibility` to `bootstrap.sql`**
-- **ESLint** — add deps + `lint` script or delete `eslint.config.js`
-- **`useDeleteImage` admin path** (RLS Phase 5)
-- **Branding increments 3–4** (OG metadata, manifest)
+- **Manual domain types** — gradually reconcile hand-written types with `database.types.ts`.
+- **Branding increment 4** — per-route titles, rough-edge polish pass (OG + manifest done).
 
 ---
 
 ## 6. Recent Major Changes
+
+### May 24 2026 session — V1 engineering wrap-up
+
+**Shipped**
+- **RLS Phase 5** — admin single-image delete via `admin-items` `DELETE /:itemId/images/:imageId`; `useDeleteImage(bypassOwnerCheck)` uses Edge Function
+- **bootstrap.sql** — `items.visibility`, `profiles.public_area`, lifecycle status defaults aligned with production
+- **Branding** — `manifest.json` + link in `index.html`; removed orphaned `eslint.config.js`
+- **Docs** — ACTIVE_CONTEXT, CLAUDE.md, RLS_HARDENING_PLAN marked complete through Phase 5
+
+**Commits:** `785b8ec` (location #14), V1 wrap-up commit pending push
 
 ### May 23 2026 session (continued) — handoff loop completion + auth fix
 
@@ -377,8 +370,8 @@ Work **one slice at a time**; user reviews between each. Issues on GitHub; bodie
 |---|---|---|
 | 1 | Logo direction exploration — Orbital C chosen | ✅ Done |
 | 2 | Favicon/app icon system + base HTML metadata | ✅ Done |
-| 3 | OG/social metadata (`og:*`, `twitter:card`, static preview image) | Pending |
-| 4 | Recruiter/demo polish pass (per-route titles, manifest.json, rough-edge review) | Pending |
+| 3 | OG/social metadata (`og:*`, `twitter:card`, static preview image) | ✅ Done |
+| 4 | Recruiter/demo polish pass (per-route titles, manifest.json, rough-edge review) | Partial — manifest ✅; per-route titles pending |
 
 ---
 
@@ -398,20 +391,16 @@ Work **one slice at a time**; user reviews between each. Issues on GitHub; bodie
 
 ## 8. Immediate Next Steps
 
-1. **Commit + deploy** — large uncommitted diff (migrations 21–29, handoff UI, `itemQueryCache.ts`, email-confirm fix). Redeploy `admin-items` Edge Function if not current (`26` lock check added).
-2. **Close GitHub issues** — #2–#4, #6–#13, #15, #9, #11 shipped; leave #1 open until V1 sign-off.
-3. **Issue #5 (HITL)** — choose public area input approach; record ADR in `docs/adr/` (decision-only slice).
-4. **Issue #14** — profile-based location on items + hide from visitors (after #5).
-5. **Regenerate Supabase types** after migrations 16–29 (optional).
-6. **Verify migration 29** applied in production (email confirm fix).
+1. **Real-user V1 validation** — one complete handoff in a real group; then close GitHub **#1**.
+2. **Post-V1** — migration chain cleanup, type reconciliation, invite links / notifications (new issues).
 
 ---
 
 ## 9. RLS Hardening — Status & Phased Plan
 
-### Current State (as of migration 17)
+### Current State (as of migration 29)
 
-RLS is **enabled on all core tables** including `interests` and `reservations`:
+RLS is **enabled on all core tables** including `interests` and `reservations` (migration 17):
 
 | Table | RLS | Key policies |
 |---|---|---|
@@ -444,10 +433,7 @@ This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` 
 
 ### Known Gap: Admin Image Deletion
 
-`useDeleteImage(bypassOwnerCheck: true)` in the frontend bypasses the owner check but still uses the normal Supabase client. Individual image deletions during admin edits of non-owned items are blocked by `item_images_write` policy.
-
-- Full-item admin delete via the `admin-items` Edge Function (service-role) is **not affected**.
-- Deferred to **Phase 5**: update this path to use service-role or route through the Edge Function.
+~~`useDeleteImage(bypassOwnerCheck: true)` blocked by RLS.~~ ✅ **Fixed (May 24 2026):** admin single-image delete routes through `admin-items` Edge Function `DELETE /:itemId/images/:imageId` (service-role).
 
 ### Phased Rollout
 
@@ -455,11 +441,11 @@ This caused policy evaluation to recurse indefinitely. A `TEMP-DISABLE-RLS.sql` 
 |---|---|---|
 | 1 | ~~Restrict `get_user_email()` to admin only~~ (migration 12) | ✅ Done |
 | 1 | ~~Fix migration 03 — remove broken index lines~~ | ✅ Done |
-| 1 | ~~Audit `items.visibility` distribution~~ — all rows `public`, no nulls | ✅ Done |
-| 2 | ~~Canonicalise `user_in_item_groups()`, add `is_admin()`, patch `gm_delete`~~ (migration 14) | ✅ Done |
+| 1 | ~~Audit `items.visibility` distribution~~ | ✅ Done |
+| 2 | ~~Canonicalise helpers + patch `gm_delete`~~ (migration 14) | ✅ Done |
 | 3 | ~~Normalise items / item_images / feedback policies~~ (migration 14) | ✅ Done |
 | 4 | ~~Enable RLS on `interests` and `reservations`~~ (migration 17) | ✅ Done |
-| 5 | Fix `useDeleteImage` admin path (admin edit of non-owned item images) | Pending |
+| 5 | ~~Fix `useDeleteImage` admin path~~ (admin-items Edge Function) | ✅ Done |
 
 **Migration rule:** Each phase is a new numbered migration. Never edit existing migration files. Keep `docs/TEMP-DISABLE-RLS.sql` accessible through Phase 5 as a rollback option.
 

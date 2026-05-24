@@ -28,11 +28,14 @@ create table if not exists items (
   condition text,
   category text,
   approx_location text,
-  status text not null default 'active',
+  visibility text not null default 'public' check (visibility in ('public', 'groups')),
+  status text not null default 'available' check (status in ('available', 'reserved', 'claimed', 'archived')),
   publish_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table items add column if not exists visibility text not null default 'public';
 
 create table if not exists item_images (
   id uuid primary key default gen_random_uuid(),
@@ -78,6 +81,7 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
   avatar_url text,
+  public_area text,
   role text not null default 'member' check (role in ('member','admin')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -85,6 +89,7 @@ create table if not exists profiles (
 
 -- Add avatar_url column if it doesn't exist (for existing tables)
 alter table profiles add column if not exists avatar_url text;
+alter table profiles add column if not exists public_area text;
 
 create index if not exists idx_profiles_role on profiles(role);
 
