@@ -16,6 +16,7 @@ export type ArchivedItemWithImages = ItemWithImages & {
 export const feedKeys = {
   all: ['feed'] as const,
   browse: ['feed', 'browse'] as const,
+  ownerReserved: ['feed', 'owner-reserved'] as const,
   ownerArchived: ['feed', 'owner-archived'] as const,
 }
 
@@ -86,6 +87,39 @@ export function useFeed(isMember: boolean) {
       if (!isMember) return withImages
 
       return attachOwnerPublicAreas(withImages)
+    },
+  })
+}
+
+export function useOwnerReservedFeed(enabled: boolean) {
+  return useQuery({
+    queryKey: feedKeys.ownerReserved,
+    enabled,
+    queryFn: async (): Promise<ItemWithImages[]> => {
+      await recoverExpiredReservations()
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return []
+
+      const { data: items, error } = await supabase
+        .from('items')
+        .select(`
+          id, title, description, status, created_at, category, updated_at, owner_id, approx_location,
+          item_images ( id, path, sort_order )
+        `)
+        .eq('owner_id', user.id)
+        .eq('status', 'reserved')
+        .order('updated_at', { ascending: false })
+        .limit(50)
+
+      if (error) throw error
+      if (!items?.length) return []
+
+      return attachOwnerPublicAreas(
+        await Promise.all(
+          items.map((item) => attachFirstImageSignedUrl(item as ItemWithImages)),
+        ),
+      )
     },
   })
 }

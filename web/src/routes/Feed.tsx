@@ -1,19 +1,20 @@
 import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useFeed, useOwnerArchivedFeed, type ArchivedItemWithImages } from '../hooks/useFeed'
+import { useFeed, useOwnerArchivedFeed, useOwnerReservedFeed, type ArchivedItemWithImages } from '../hooks/useFeed'
 import ItemCard from '../components/ItemCard'
 import Button from '../components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { useOwnerInterestIndicators } from '@/features/interests/api'
 import { resolveItemPublicArea } from '@/lib/publicArea'
 
-type FeedView = 'browse' | 'archived'
+type FeedView = 'browse' | 'reserved' | 'archived'
 
 export default function Feed() {
   const { user, loading: authLoading } = useAuth()
   const [view, setView] = useState<FeedView>('browse')
 
   const browseQuery = useFeed(!!user)
+  const reservedQuery = useOwnerReservedFeed(!authLoading && !!user && view === 'reserved')
   const archivedQuery = useOwnerArchivedFeed(!authLoading && !!user && view === 'archived')
   const ownerIndicatorsQuery = useOwnerInterestIndicators(
     !authLoading && !!user && view === 'browse'
@@ -31,7 +32,12 @@ export default function Feed() {
   }, [ownerIndicatorsQuery.data])
 
   const isArchivedView = view === 'archived' && !!user
-  const activeQuery = isArchivedView ? archivedQuery : browseQuery
+  const isReservedView = view === 'reserved' && !!user
+  const activeQuery = isArchivedView
+    ? archivedQuery
+    : isReservedView
+      ? reservedQuery
+      : browseQuery
   const { data: items, isLoading, error } = activeQuery
 
   if (isLoading || authLoading) {
@@ -52,7 +58,11 @@ export default function Feed() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-3">
           <h1 className="text-title">
-            {isArchivedView ? 'My archived items' : 'Feed'}
+            {isArchivedView
+              ? 'My archived items'
+              : isReservedView
+                ? 'My reserved items'
+                : 'Feed'}
           </h1>
           {user && (
             <div className="flex flex-wrap gap-2">
@@ -63,6 +73,12 @@ export default function Feed() {
                 Browse
               </Button>
               <Button
+                variant={view === 'reserved' ? 'primary' : 'secondary'}
+                onClick={() => setView('reserved')}
+              >
+                Reserved
+              </Button>
+              <Button
                 variant={view === 'archived' ? 'primary' : 'secondary'}
                 onClick={() => setView('archived')}
               >
@@ -71,12 +87,20 @@ export default function Feed() {
             </div>
           )}
         </div>
-        {!isArchivedView && (
+        {!isArchivedView && !isReservedView && (
           <Link to="/new">
             <Button className="btn-accent">Create Item</Button>
           </Link>
         )}
       </div>
+
+      {isReservedView && (
+        <p className="text-caption">
+          Items you have reserved for pickup. Open an item to mark it as claimed
+          once the handoff is complete, or cancel the reservation to offer it
+          again on the browse feed.
+        </p>
+      )}
 
       {isArchivedView && (
         <p className="text-caption">
@@ -91,9 +115,11 @@ export default function Feed() {
           <p className="text-caption mb-4">
             {isArchivedView
               ? 'No archived items yet.'
-              : 'No available items yet. Create one to get started!'}
+              : isReservedView
+                ? 'No reserved items. When you reserve an item for someone, it will appear here until pickup is confirmed or the reservation is cancelled.'
+                : 'No available items yet. Create one to get started!'}
           </p>
-          {!isArchivedView && (
+          {!isArchivedView && !isReservedView && (
             <Link to="/new">
               <Button className="btn-accent">Create Your First Item</Button>
             </Link>
