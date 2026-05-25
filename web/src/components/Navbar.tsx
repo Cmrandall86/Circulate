@@ -9,6 +9,21 @@ import FeedbackModal from '@/features/feedback/FeedbackModal'
 import ThemePopover, { ThemeMenuSection } from '@/components/ThemePopover'
 import IconButton from '@/components/ui/IconButton'
 
+function MenuToggleIcon({ open }: { open: boolean }) {
+  const line =
+    'absolute left-0 block h-0.5 w-5 rounded-full bg-current transition-all duration-200 ease-in-out motion-reduce:transition-none'
+
+  return (
+    <span className="relative block h-5 w-5" aria-hidden="true">
+      <span className={`${line} ${open ? 'top-[9px] rotate-45' : 'top-[3px] rotate-0'}`} />
+      <span
+        className={`${line} top-[9px] ${open ? 'scale-x-0 opacity-0' : 'scale-x-100 opacity-100'}`}
+      />
+      <span className={`${line} ${open ? 'top-[9px] -rotate-45' : 'top-[15px] rotate-0'}`} />
+    </span>
+  )
+}
+
 function NewInterestNavLink({
   count,
   onNavigate,
@@ -213,11 +228,7 @@ export default function Navbar() {
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((o) => !o)}
               >
-                <span className="flex flex-col gap-[5px] w-5">
-                  <span className="block h-0.5 w-full bg-current rounded" />
-                  <span className="block h-0.5 w-full bg-current rounded" />
-                  <span className="block h-0.5 w-full bg-current rounded" />
-                </span>
+                <MenuToggleIcon open={menuOpen} />
               </IconButton>
             </>
           ) : (

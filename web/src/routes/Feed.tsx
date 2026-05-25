@@ -9,6 +9,19 @@ import { resolveItemPublicArea } from '@/lib/publicArea'
 
 type FeedView = 'browse' | 'reserved' | 'archived'
 
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+      <path
+        d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export default function Feed() {
   const { user, loading: authLoading } = useAuth()
   const [view, setView] = useState<FeedView>('browse')
@@ -53,46 +66,74 @@ export default function Feed() {
     )
   }
 
+  const showPostAction = !isArchivedView && !isReservedView
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-3">
-          <h1 className="text-title">
+      <header className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-title min-w-0">
             {isArchivedView
               ? 'My archived items'
               : isReservedView
                 ? 'My reserved items'
                 : 'Feed'}
           </h1>
-          {user && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={view === 'browse' ? 'primary' : 'secondary'}
-                onClick={() => setView('browse')}
-              >
-                Browse
-              </Button>
-              <Button
-                variant={view === 'reserved' ? 'primary' : 'secondary'}
-                onClick={() => setView('reserved')}
-              >
-                Reserved
-              </Button>
-              <Button
-                variant={view === 'archived' ? 'primary' : 'secondary'}
-                onClick={() => setView('archived')}
-              >
-                My archived
-              </Button>
-            </div>
+          {showPostAction && (
+            <Link
+              to="/new"
+              aria-label="Post item"
+              className="interactive-focus btn-accent inline-flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-black sm:hidden"
+            >
+              <PlusIcon />
+            </Link>
           )}
         </div>
-        {!isArchivedView && !isReservedView && (
-          <Link to="/new">
-            <Button className="btn-accent">Create Item</Button>
-          </Link>
+
+        {(user || showPostAction) && (
+          <div className="flex items-center justify-between gap-3">
+            {user && (
+              <div
+                className="flex w-full min-w-0 gap-1 rounded-2xl border border-base-600 bg-base-800/80 p-1 sm:w-auto sm:border-0 sm:bg-transparent sm:p-0 sm:gap-2"
+                role="tablist"
+                aria-label="Feed views"
+              >
+                {(
+                  [
+                    ['browse', 'Browse'],
+                    ['reserved', 'Reserved'],
+                    ['archived', 'My archived'],
+                  ] as const
+                ).map(([value, label]) => {
+                  const active = view === value
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setView(value)}
+                      className={`interactive-focus min-w-0 flex-1 rounded-xl px-2 py-2 text-caption font-medium transition-colors sm:flex-none sm:rounded-2xl sm:px-4 sm:py-2 sm:text-body ${
+                        active
+                          ? 'bg-base-700 text-ink-400 shadow-sm sm:btn-accent sm:text-black sm:shadow-none'
+                          : 'text-ink-600 hover:bg-base-700/60 hover:text-ink-400 sm:bg-base-700 sm:text-ink-400 sm:hover:bg-base-600'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {showPostAction && (
+              <Link to="/new" className="hidden shrink-0 sm:block">
+                <Button className="btn-accent whitespace-nowrap">Post item</Button>
+              </Link>
+            )}
+          </div>
         )}
-      </div>
+      </header>
 
       {isReservedView && (
         <p className="text-caption">
@@ -117,11 +158,11 @@ export default function Feed() {
               ? 'No archived items yet.'
               : isReservedView
                 ? 'No reserved items. When you reserve an item for someone, it will appear here until pickup is confirmed or the reservation is cancelled.'
-                : 'No available items yet. Create one to get started!'}
+                : 'No available items yet. Post one to get started!'}
           </p>
           {!isArchivedView && !isReservedView && (
             <Link to="/new">
-              <Button className="btn-accent">Create Your First Item</Button>
+              <Button className="btn-accent">Post your first item</Button>
             </Link>
           )}
         </div>
