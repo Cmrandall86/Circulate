@@ -35,14 +35,14 @@ export default function Feed() {
   const { data: items, isLoading, error } = activeQuery
 
   if (isLoading || authLoading) {
-    return <div className="text-ink-500">Loading feed...</div>
+    return <div className="text-body text-ink-500">Loading feed...</div>
   }
 
   if (error) {
     return (
       <div className="max-w-2xl mx-auto mt-8 p-6 card border border-red-500/30 rounded-lg">
-        <h2 className="text-lg font-semibold text-red-400 mb-2">Failed to load feed</h2>
-        <p className="text-ink-600 text-sm">Something went wrong. Please try refreshing the page.</p>
+        <h2 className="text-heading mb-2 text-red-400">Failed to load feed</h2>
+        <p className="text-caption">Something went wrong. Please try refreshing the page.</p>
       </div>
     )
   }
@@ -51,7 +51,7 @@ export default function Feed() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-3">
-          <h1 className="text-2xl text-ink-400">
+          <h1 className="text-title">
             {isArchivedView ? 'My archived items' : 'Feed'}
           </h1>
           {user && (
@@ -79,7 +79,7 @@ export default function Feed() {
       </div>
 
       {isArchivedView && (
-        <p className="text-sm text-ink-600">
+        <p className="text-caption">
           Archived items are hidden from the public browse feed. Handoff complete
           means pickup was confirmed; Removed means you archived without completing
           a handoff.
@@ -88,7 +88,7 @@ export default function Feed() {
 
       {!items || items.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-ink-600 mb-4">
+          <p className="text-caption mb-4">
             {isArchivedView
               ? 'No archived items yet.'
               : 'No available items yet. Create one to get started!'}
@@ -100,7 +100,7 @@ export default function Feed() {
           )}
         </div>
       ) : (
-        <div className="grid [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] gap-4">
+        <div className="grid justify-items-start gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))]">
           {items.map((item) => {
             const ownerIndicator =
               user && item.owner_id === user.id
@@ -111,6 +111,7 @@ export default function Feed() {
               <ItemCard
                 key={item.id}
                 item={item}
+                constrainWidth={items.length <= 3}
                 archiveKind={
                   isArchivedView
                     ? (item as ArchivedItemWithImages).archiveKind

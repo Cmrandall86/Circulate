@@ -1,30 +1,35 @@
 import type { Config } from 'tailwindcss'
+
 export default {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
         base: {
-          900: "#0b0d0e", // near-black
-          800: "#121416",
-          700: "#1a1d1f",
-          600: "#24282a",
+          900: 'rgb(var(--color-base-900) / <alpha-value>)',
+          800: 'rgb(var(--color-base-800) / <alpha-value>)',
+          700: 'rgb(var(--color-base-700) / <alpha-value>)',
+          600: 'rgb(var(--color-base-600) / <alpha-value>)',
         },
         ink: {
-          400: "#cfd3d6",
-          500: "#aab0b4",
-          600: "#8a9094"
+          400: 'rgb(var(--color-ink-400) / <alpha-value>)',
+          500: 'rgb(var(--color-ink-500) / <alpha-value>)',
+          600: 'rgb(var(--color-ink-600) / <alpha-value>)',
         },
         mint: {
-          300: "#75d0a6", // cool green accents
-          400: "#49be8b",
-          500: "#2ea272",
-          600: "#23835c"
-        }
+          300: 'rgb(var(--color-mint-300) / <alpha-value>)',
+          400: 'rgb(var(--color-mint-400) / <alpha-value>)',
+          500: 'rgb(var(--color-mint-500) / <alpha-value>)',
+          600: 'rgb(var(--color-mint-600) / <alpha-value>)',
+        },
+        overlay: 'rgb(var(--color-overlay) / <alpha-value>)',
+        link: {
+          DEFAULT: 'rgb(var(--color-link) / <alpha-value>)',
+          hover: 'rgb(var(--color-link-hover) / <alpha-value>)',
+        },
       },
-      borderRadius: { '2xl': '1.25rem' }
-    }
+      borderRadius: { '2xl': '1.25rem' },
+    },
   },
-  plugins: []
+  plugins: [],
 } satisfies Config
-

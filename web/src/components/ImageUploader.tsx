@@ -102,7 +102,7 @@ export default function ImageUploader({ images, onChange, onRemove, maxFiles = 5
           {uploading ? 'Processing...' : `Add Images (${images.length}/${maxFiles})`}
         </Button>
         {images.length > 0 && (
-          <span className="text-sm text-ink-600">
+          <span className="text-caption">
             Drag to reorder
           </span>
         )}
@@ -125,7 +125,7 @@ export default function ImageUploader({ images, onChange, onRemove, maxFiles = 5
                 className="w-full h-24 object-cover rounded-lg border-2 border-base-700"
               />
               {index === 0 && (
-                <div className="absolute bottom-1 left-1 bg-mint-500 text-base-900 text-xs px-2 py-0.5 rounded">
+                <div className="absolute bottom-1 left-1 bg-mint-500 text-black text-xs px-2 py-0.5 rounded">
                   Cover
                 </div>
               )}

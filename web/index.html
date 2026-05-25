@@ -2,6 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        var KEY = 'circulate-theme';
+        var resolved;
+        try {
+          var stored = localStorage.getItem(KEY);
+          if (stored === 'light' || stored === 'dark') {
+            resolved = stored;
+          } else if (stored === 'system') {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+            localStorage.setItem(KEY, resolved);
+          } else {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+          }
+        } catch (e) {
+          resolved = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.style.colorScheme = resolved;
+      })();
+    </script>
+    <style>
+      html[data-theme='dark'],
+      html:not([data-theme]) {
+        background-color: #0b0d0e;
+        color: #cfd3d6;
+      }
+      html[data-theme='light'] {
+        background-color: #eceef0;
+        color: #2d3236;
+      }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Circulate</title>
     <meta name="description" content="Private-first item sharing for trusted circles." />

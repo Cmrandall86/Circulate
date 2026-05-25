@@ -49,9 +49,9 @@ export default function ResetPassword() {
     return (
       <div className="max-w-md mx-auto mt-16">
         <div className="card p-6 text-center space-y-4">
-          <h1 className="text-2xl font-bold text-ink-400">Password Reset</h1>
-          <p className="text-ink-500">Your password has been reset successfully.</p>
-          <p className="text-sm text-ink-600">Redirecting to sign in...</p>
+          <h1 className="text-title">Password Reset</h1>
+          <p className="text-body text-ink-500">Your password has been reset successfully.</p>
+          <p className="text-caption">Redirecting to sign in...</p>
         </div>
       </div>
     )
@@ -60,8 +60,8 @@ export default function ResetPassword() {
   return (
     <div className="max-w-md mx-auto mt-16">
       <div className="card p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-ink-400">Reset Password</h1>
-        <p className="text-sm text-ink-600">Enter your new password below.</p>
+        <h1 className="text-title">Reset Password</h1>
+        <p className="text-caption">Enter your new password below.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -83,7 +83,7 @@ export default function ResetPassword() {
           />
           
           {error && (
-            <div className="text-red-400 text-sm">{error}</div>
+            <div className="text-caption text-red-400">{error}</div>
           )}
           
           <Button type="submit" disabled={loading} className="btn-accent w-full">

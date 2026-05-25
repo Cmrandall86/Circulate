@@ -24,8 +24,8 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen bg-base-900 flex items-center justify-center px-4">
           <div className="card p-8 max-w-md w-full space-y-4 border border-base-700">
-            <h1 className="text-xl font-semibold text-ink-400">Something went wrong</h1>
-            <p className="text-ink-600 text-sm">
+            <h1 className="text-heading">Something went wrong</h1>
+            <p className="text-caption">
               An unexpected error occurred. You can try refreshing the page or return to the home
               screen.
             </p>

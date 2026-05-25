@@ -56,7 +56,7 @@ Last updated: May 24, 2026 (V1 complete; V1.5 UI/UX plan published #16–#23)
 | Handoff | Interest → owner picks → `reserved` → `claimed`; 7-day default expiry |
 | Location | Profile `public_area` (optional, normalized free text); items inherit; per-item override via `items.approx_location`; hidden from visitors |
 | Settings | `/settings` — display name, avatar, public area |
-| Theme (V1.5) | Light / dark / system toggle in navbar (planned #17–#18) |
+| Theme (V1.5) | Light / dark toggle in navbar (#17–#18) |
 | Out of V1 | DMs, email/push, invite links, public profile pages, report queue |
 
 **V1 handoff loop:** ✅ Shipped and closed (#1–#15). **V1.5 UI/UX polish:** planned (#16–#23); **implement #17 next**.
@@ -209,7 +209,7 @@ Work **one slice at a time**; user reviews between each. PRD: `docs/PRD-V1.5-UI-
 
 | Area | Decision |
 |---|---|
-| Theme | Light / dark / **system**; `localStorage`; default system |
+| Theme | Light / dark; `localStorage` when chosen; first visit follows OS (not persisted until user picks) |
 | Theme UI | Navbar popover with 3 labeled options |
 | Light palette | Soft gray page bg, white cards, same mint accent |
 | Feed | Fixed ~260px cards, left-aligned (no stretch on partial rows) |

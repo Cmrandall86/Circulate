@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import Button from '@/components/ui/Button'
@@ -55,6 +55,8 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([])
   const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [error, setError] = useState('')
+  const descriptionId = useId()
+  const locationOverrideHintId = useId()
 
   const profilePublicArea = isAdminEdit
     ? (ownerPublicArea ?? null)
@@ -199,12 +201,12 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
 
   return (
     <Card className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl text-ink-400 mb-6">
+      <h1 className="text-title mb-6">
         {itemId ? 'Edit Item' : 'Create New Item'}
       </h1>
 
       {isAdminEdit && (
-        <div className="mb-4 px-3 py-2 rounded border border-yellow-600/40 bg-yellow-600/10 text-yellow-400 text-sm">
+        <div className="text-caption mb-4 rounded border border-yellow-600/40 bg-yellow-600/10 px-3 py-2 text-yellow-400">
           Admin edit — you are modifying another user's item.
         </div>
       )}
@@ -219,11 +221,12 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
         />
 
         <div>
-          <label className="block text-sm font-medium text-ink-400 mb-2">
+          <label htmlFor={descriptionId} className="text-caption mb-2 block font-medium text-ink-400">
             Description
           </label>
           <textarea
-            className="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-ink-400 min-h-[100px]"
+            id={descriptionId}
+            className="text-body interactive-focus min-h-[100px] w-full rounded-lg border border-base-700 bg-base-900 px-3 py-2"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe your item..."
@@ -247,15 +250,15 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
         </div>
 
         <div className="border-t border-base-700 pt-6 space-y-3">
-          <h3 className="text-lg text-ink-400">Public area</h3>
-          <p className="text-sm text-ink-600">
+          <h3 className="text-heading">Public area</h3>
+          <p className="text-caption">
             Items use your profile public area by default. Set or update yours in{' '}
-            <Link to="/settings" className="text-mint-400 underline">
+            <Link to="/settings" className="text-link interactive-focus rounded-lg underline">
               Settings
             </Link>
             .
           </p>
-          <p className="text-sm text-ink-500">
+          <p className="text-caption text-ink-500">
             {profilePublicArea
               ? <>Your profile area: <span className="text-ink-400">{profilePublicArea}</span></>
               : 'No profile public area set yet.'}
@@ -268,7 +271,7 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
               disabled={isPending}
               className="w-4 h-4"
             />
-            <span className="text-ink-400 text-sm">Use a different area for this item</span>
+            <span className="text-caption text-ink-400">Use a different area for this item</span>
           </label>
           {useLocationOverride && (
             <>
@@ -278,8 +281,9 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
                 onChange={(e) => setLocationOverride(e.target.value)}
                 placeholder="e.g. Capitol Hill, Seattle"
                 disabled={isPending}
+                descriptionId={locationOverrideHintId}
               />
-              <p className="text-ink-600 text-sm -mt-4">
+              <p id={locationOverrideHintId} className="text-caption -mt-4">
                 General neighborhood or city only — never a street address.
               </p>
             </>
@@ -288,21 +292,21 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
 
         {/* Images section */}
         <div className="border-t border-base-700 pt-6">
-          <h3 className="text-lg text-ink-400 mb-4">Images</h3>
+          <h3 className="text-heading mb-4">Images</h3>
           <ImageUploader
             images={images}
             onChange={setImages}
             onRemove={handleImageRemove}
             maxFiles={5}
           />
-          <p className="text-sm text-ink-600 mt-2">
+          <p className="text-caption mt-2">
             Add up to 5 images. First image will be the cover photo. On mobile, you can take photos directly.
           </p>
         </div>
 
         {/* Who can see this section */}
         <div className="border-t border-base-700 pt-6">
-          <h3 className="text-lg text-ink-400 mb-4">Who can see this?</h3>
+          <h3 className="text-heading mb-4">Who can see this?</h3>
           
           <div className="space-y-3">
             <label className="flex items-center gap-3 cursor-pointer">
@@ -315,8 +319,8 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
                 className="w-4 h-4"
               />
               <div>
-                <div className="text-ink-400">Public</div>
-                <div className="text-ink-600 text-sm">Anyone can see this item</div>
+                <div className="text-body">Public</div>
+                <div className="text-caption">Anyone can see this item</div>
               </div>
             </label>
 
@@ -330,8 +334,8 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
                 className="w-4 h-4"
               />
               <div>
-                <div className="text-ink-400">Specific Groups</div>
-                <div className="text-ink-600 text-sm">Only members of selected groups can see this</div>
+                <div className="text-body">Specific Groups</div>
+                <div className="text-caption">Only members of selected groups can see this</div>
               </div>
             </label>
           </div>
@@ -339,7 +343,7 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
           {/* Group selection */}
           {visibility === 'groups' && (
             <div className="mt-4 border border-base-700 rounded-lg p-4">
-              <div className="text-sm text-ink-400 mb-3">Select groups:</div>
+              <div className="text-body mb-3">Select groups:</div>
               {groups && groups.length > 0 ? (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {groups.map(group => (
@@ -350,12 +354,12 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
                         onChange={() => handleGroupToggle(group.id)}
                         className="w-4 h-4"
                       />
-                      <span className="text-ink-400">{group.name}</span>
+                      <span className="text-body">{group.name}</span>
                     </label>
                   ))}
                 </div>
               ) : (
-                <div className="text-ink-600 text-sm">
+                <div className="text-caption">
                   You don't belong to any groups yet. Create or join a group first.
                 </div>
               )}
@@ -364,7 +368,9 @@ export default function ItemForm({ itemId, item, isAdminEdit = false, onUpdate, 
         </div>
 
         {error && (
-          <div className="text-red-500 text-sm">{error}</div>
+          <div className="text-caption text-red-500" role="alert">
+            {error}
+          </div>
         )}
 
         <div className="flex gap-3 pt-4">

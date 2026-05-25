@@ -13,10 +13,54 @@
     background: var(--bg); 
     color: var(--text); 
     font-family: system-ui, -apple-system, sans-serif;
+    @apply text-body;
   }
 }
 
 @layer components {
+  /*
+   * Typography scale (V1.5 #20)
+   * text-title   — page titles (h1)
+   * text-heading — section headings, card titles, modal titles
+   * text-body    — default UI copy, nav links, form inputs
+   * text-caption — secondary meta, labels, timestamps, helper text
+   */
+  .text-title {
+    @apply text-[1.75rem] font-bold leading-tight tracking-tight text-ink-400;
+  }
+
+  .text-heading {
+    @apply text-lg font-semibold leading-snug text-ink-400;
+  }
+
+  .text-body {
+    @apply text-base leading-relaxed text-ink-400;
+  }
+
+  .text-caption {
+    @apply text-sm leading-normal text-ink-600;
+  }
+
+  .text-link {
+    color: rgb(var(--color-link));
+  }
+
+  .text-link:hover {
+    color: rgb(var(--color-link-hover));
+  }
+
+  .interactive-focus {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-400 focus-visible:ring-offset-2 focus-visible:ring-offset-base-900;
+  }
+
+  .skip-link {
+    @apply sr-only interactive-focus;
+  }
+
+  .skip-link:focus {
+    @apply not-sr-only absolute left-4 top-4 z-[100] rounded-lg border border-base-600 bg-base-800 px-4 py-2 text-body shadow-lg;
+  }
+
   .card { 
     background: var(--panel); 
     border-radius: var(--radius); 
@@ -27,6 +71,7 @@
     border: none;
     cursor: pointer;
     transition: all 0.2s;
+    @apply interactive-focus;
 }
 
   .btn-accent { 

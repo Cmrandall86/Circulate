@@ -45,7 +45,7 @@ export default function ItemOwnerReservation({
   if (isLoading) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">Loading reservation…</p>
+        <p className="text-caption">Loading reservation…</p>
       </section>
     )
   }
@@ -53,7 +53,7 @@ export default function ItemOwnerReservation({
   if (error) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-red-400">
+        <p className="text-caption text-red-400">
           Error loading reservation: {(error as Error).message}
         </p>
       </section>
@@ -63,7 +63,7 @@ export default function ItemOwnerReservation({
   if (!reservation) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">
+        <p className="text-caption">
           This item is reserved, but no active reservation record was found.
         </p>
       </section>
@@ -84,8 +84,8 @@ export default function ItemOwnerReservation({
     <>
       <section className={panelClassName}>
         <header className="mb-4 space-y-1">
-          <h3 className="text-base font-medium text-ink-400">Active reservation</h3>
-          <p className="text-sm text-ink-600">
+          <h3 className="text-heading">Active reservation</h3>
+          <p className="text-caption">
             Reserved for{' '}
             <span className="text-ink-400">{claimerName}</span>
             {reservation.expires_at ? (
@@ -138,13 +138,13 @@ export default function ItemOwnerReservation({
         title="Mark as claimed"
       >
         <div className="space-y-4">
-          <p className="text-ink-500">
+          <p className="text-body text-ink-500">
             Confirm pickup with{' '}
             <strong className="text-ink-400">{claimerName}</strong>? The handoff
             will be marked complete and this item will be archived.
           </p>
 
-          {claimError && <p className="text-sm text-red-400">Error: {claimError}</p>}
+          {claimError && <p className="text-caption text-red-400">Error: {claimError}</p>}
 
           <div className="flex gap-2 justify-end">
             <Button
@@ -180,14 +180,14 @@ export default function ItemOwnerReservation({
         title="Cancel reservation"
       >
         <div className="space-y-4">
-          <p className="text-ink-500">
+          <p className="text-body text-ink-500">
             Cancel the reservation for{' '}
             <strong className="text-ink-400">{claimerName}</strong>? The item will
             return to <strong className="text-ink-400">available</strong> and you
             can pick someone else from the interest queue.
           </p>
 
-          {cancelError && <p className="text-sm text-red-400">Error: {cancelError}</p>}
+          {cancelError && <p className="text-caption text-red-400">Error: {cancelError}</p>}
 
           <div className="flex gap-2 justify-end">
             <Button

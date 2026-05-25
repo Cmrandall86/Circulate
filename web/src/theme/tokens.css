@@ -1,11 +1,67 @@
+/* Shared tokens (theme-independent) */
 :root {
-  --bg: #0b0d0e;        /* base-900 */
-  --panel: #121416;     /* base-800 */
-  --panel-2: #1a1d1f;   /* base-700 */
-  --text: #cfd3d6;      /* ink-400 */
-  --muted: #8a9094;     /* ink-600 */
-  --accent: #49be8b;    /* mint-400 */
-  --accent-strong: #23835c; /* mint-600 */
-  --radius: 1.25rem;    /* 2xl */
+  --radius: 1.25rem;
+  --accent: #49be8b;
+  --accent-strong: #23835c;
+
+  --color-mint-300: 117 208 166;
+  --color-mint-400: 73 190 139;
+  --color-mint-500: 46 162 114;
+  --color-mint-600: 35 131 92;
+
+  --color-link: 73 190 139;
+  --color-link-hover: 117 208 166;
+
+  /* Always dark — image scrims, overlays on photos */
+  --color-overlay: 11 13 14;
 }
 
+/* Dark theme (default + explicit) */
+:root,
+[data-theme='dark'] {
+  --bg: #0b0d0e;
+  --panel: #121416;
+  --panel-2: #1a1d1f;
+  --text: #cfd3d6;
+  --muted: #8a9094;
+
+  --color-base-900: 11 13 14;
+  --color-base-800: 18 20 22;
+  --color-base-700: 26 29 31;
+  --color-base-600: 36 40 42;
+  --color-ink-400: 207 211 214;
+  --color-ink-500: 170 176 180;
+  --color-ink-600: 138 144 148;
+}
+
+/* Light theme — soft gray page, white cards, same mint accent */
+[data-theme='light'] {
+  --bg: #eceef0;
+  --panel: #ffffff;
+  --panel-2: #f5f6f7;
+  --text: #2d3236;
+  --muted: #6b7280;
+
+  --color-link: 35 131 92;
+  --color-link-hover: 46 162 114;
+
+  --color-base-900: 236 238 240;
+  --color-base-800: 255 255 255;
+  --color-base-700: 245 246 247;
+  --color-base-600: 220 224 228;
+  --color-ink-400: 45 50 54;
+  --color-ink-500: 74 80 84;
+  --color-ink-600: 88 94 104;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+}

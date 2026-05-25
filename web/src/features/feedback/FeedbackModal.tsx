@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -16,6 +16,8 @@ const FEEDBACK_TYPES = Object.entries(FEEDBACK_TYPE_LABELS) as [FeedbackType, st
 export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const { user } = useAuth()
   const submitFeedback = useSubmitFeedback()
+  const typeId = useId()
+  const messageId = useId()
   const [type, setType] = useState<FeedbackType>('general')
   const [message, setMessage] = useState('')
 
@@ -53,11 +55,14 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
     <Modal isOpen={isOpen} onClose={handleClose} title="Feedback">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-ink-500 mb-2">Type</label>
+          <label htmlFor={typeId} className="text-caption mb-2 block text-ink-500">
+            Type
+          </label>
           <select
+            id={typeId}
             value={type}
             onChange={(e) => setType(e.target.value as FeedbackType)}
-            className="w-full px-4 py-2 bg-base-700 border border-base-600 rounded-2xl text-ink-400 focus:outline-none focus:ring-2 focus:ring-mint-400"
+            className="text-body interactive-focus w-full rounded-2xl border border-base-600 bg-base-700 px-4 py-2"
             required
           >
             {FEEDBACK_TYPES.map(([value, label]) => (
@@ -69,14 +74,17 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         </div>
 
         <div>
-          <label className="block text-ink-500 mb-2">Message</label>
+          <label htmlFor={messageId} className="text-caption mb-2 block text-ink-500">
+            Message
+          </label>
           <textarea
+            id={messageId}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             required
             rows={4}
             placeholder="Describe the issue, idea, or question…"
-            className="w-full px-4 py-2 bg-base-700 border border-base-600 rounded-2xl text-ink-400 focus:outline-none focus:ring-2 focus:ring-mint-400 resize-none"
+            className="text-body interactive-focus w-full resize-none rounded-2xl border border-base-600 bg-base-700 px-4 py-2"
           />
         </div>
 

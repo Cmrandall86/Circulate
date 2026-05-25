@@ -35,7 +35,7 @@ export default function ItemOwnerArchivedActions({
   if (archiveKindLoading) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">Loading archive details…</p>
+        <p className="text-caption">Loading archive details…</p>
       </section>
     )
   }
@@ -43,7 +43,7 @@ export default function ItemOwnerArchivedActions({
   if (archiveKind === 'handoff_complete') {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">
+        <p className="text-caption">
           This handoff is complete. Completed giveaways stay archived and cannot
           re-enter the browse feed.
         </p>
@@ -58,8 +58,8 @@ export default function ItemOwnerArchivedActions({
     <>
       <section className={panelClassName}>
         <header className="mb-4 space-y-1">
-          <h3 className="text-base font-medium text-ink-400">Archived item</h3>
-          <p className="text-sm text-ink-600">
+          <h3 className="text-heading">Archived item</h3>
+          <p className="text-caption">
             This item was removed from the browse feed without a completed handoff.
             You can return it to the live feed if you want to offer it again.
           </p>
@@ -75,7 +75,7 @@ export default function ItemOwnerArchivedActions({
         </Button>
 
         {mutationError && (
-          <p className="mt-4 text-sm text-red-400">Error: {mutationError}</p>
+          <p className="mt-4 text-caption text-red-400">Error: {mutationError}</p>
         )}
       </section>
 
@@ -90,14 +90,14 @@ export default function ItemOwnerArchivedActions({
         title="Return to feed"
       >
         <div className="space-y-4">
-          <p className="text-ink-500">
+          <p className="text-body text-ink-500">
             Return <strong className="text-ink-400">"{itemTitle}"</strong> to the
             browse feed as <strong className="text-ink-400">available</strong>?
             Existing interest rows will stay on record.
           </p>
 
           {mutationError && (
-            <p className="text-sm text-red-400">Error: {mutationError}</p>
+            <p className="text-caption text-red-400">Error: {mutationError}</p>
           )}
 
           <div className="flex gap-2 justify-end">

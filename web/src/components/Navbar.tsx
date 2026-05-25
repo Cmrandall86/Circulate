@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/hooks/useRole'
 import { useOwnerInterestIndicators } from '@/features/interests/api'
 import FeedbackModal from '@/features/feedback/FeedbackModal'
+import ThemePopover, { ThemeMenuSection } from '@/components/ThemePopover'
+import IconButton from '@/components/ui/IconButton'
 
 function NewInterestNavLink({
   count,
@@ -26,17 +28,17 @@ function NewInterestNavLink({
       to="/"
       onClick={onNavigate}
       aria-label={ariaLabel}
-      className={`inline-flex items-center rounded-full border border-mint-400/30 bg-mint-400/10 font-medium text-mint-400 transition-colors hover:bg-mint-400/15 hover:text-mint-400 ${
-        compact ? 'gap-1.5 px-2.5 py-1 text-xs' : 'gap-2 px-3 py-1.5 text-sm'
+      className={`text-caption interactive-focus inline-flex items-center rounded-full border border-link/30 bg-link/10 font-medium text-link transition-colors hover:bg-link/15 ${
+        compact ? 'gap-1.5 px-2.5 py-1' : 'text-body gap-2 px-3 py-1.5'
       }`}
     >
-      <span className="h-2 w-2 shrink-0 rounded-full bg-mint-400" aria-hidden="true" />
+      <span className="h-2 w-2 shrink-0 rounded-full bg-link" aria-hidden="true" />
       {compact ? (
         <span>Interest · {countLabel}</span>
       ) : (
         <>
           <span>New interest</span>
-          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-mint-400 px-1 text-[10px] font-bold leading-none text-base-900">
+          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-mint-400 px-1 text-[10px] font-bold leading-none text-black">
             {countLabel}
           </span>
         </>
@@ -107,7 +109,7 @@ export default function Navbar() {
         {/* Brand */}
         <Link
           to="/"
-          className={`flex items-center gap-2 font-semibold transition-colors ${isActive('/') ? 'text-mint-400' : 'text-mint-400/70 hover:text-mint-400'}`}
+          className={`text-heading interactive-focus flex items-center gap-2 rounded-lg transition-colors ${isActive('/') ? 'text-link' : 'text-link/70 hover:text-link'}`}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true" className="shrink-0">
             <g stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
@@ -126,8 +128,8 @@ export default function Navbar() {
           {user && (
             <Link
               to="/groups"
-              className={`transition-colors ${
-                isActive('/groups') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
+              className={`text-body interactive-focus rounded-lg transition-colors ${
+                isActive('/groups') ? 'font-medium text-link' : 'text-ink-600 hover:text-ink-400'
               }`}
             >
               Groups
@@ -136,8 +138,8 @@ export default function Navbar() {
           {user && (
             <Link
               to="/settings"
-              className={`transition-colors ${
-                isActive('/settings') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
+              className={`text-body interactive-focus rounded-lg transition-colors ${
+                isActive('/settings') ? 'font-medium text-link' : 'text-ink-600 hover:text-ink-400'
               }`}
             >
               Settings
@@ -146,8 +148,8 @@ export default function Navbar() {
           {isAdmin && (
             <Link
               to="/admin/users"
-              className={`transition-colors ${
-                isActive('/admin') ? 'text-mint-400 font-medium' : 'text-ink-600 hover:text-ink-400'
+              className={`text-body interactive-focus rounded-lg transition-colors ${
+                isActive('/admin') ? 'font-medium text-link' : 'text-ink-600 hover:text-ink-400'
               }`}
             >
               Admin
@@ -155,16 +157,17 @@ export default function Navbar() {
           )}
           {user && (
             <button
-              className="transition-colors text-ink-600 hover:text-ink-400"
+              className="text-body interactive-focus rounded-lg transition-colors text-ink-600 hover:text-ink-400"
               onClick={() => setFeedbackOpen(true)}
             >
               Feedback
             </button>
           )}
+          <ThemePopover />
           {user ? (
             <>
               <button
-                className="px-3 py-1.5 rounded-2xl border border-base-600 hover:bg-base-700 text-ink-400"
+                className="text-body interactive-focus rounded-2xl border border-base-600 px-3 py-1.5 text-ink-400 hover:bg-base-700"
                 onClick={handleSignOut}
               >
                 Sign out
@@ -182,9 +185,9 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/signup"
-                className={`px-3 py-1.5 rounded-2xl border transition-colors ${
+                className={`interactive-focus px-3 py-1.5 rounded-2xl border transition-colors ${
                   isActive('/signup')
-                    ? 'border-mint-400/50 bg-base-700 text-mint-400'
+                    ? 'border-link/50 bg-base-700 text-link'
                     : 'border-base-600 hover:bg-base-700 text-ink-400'
                 }`}
               >
@@ -196,6 +199,7 @@ export default function Navbar() {
 
         {/* ── Mobile nav (below sm) ── */}
         <div className="flex sm:hidden items-center gap-2">
+          {!user && <ThemePopover />}
           {user ? (
             <>
               <NewInterestNavLink
@@ -204,10 +208,9 @@ export default function Navbar() {
                 onNavigate={closeMenu}
               />
               {/* Hamburger button */}
-              <button
-                aria-label="Open menu"
+              <IconButton
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={menuOpen}
-                className="p-2 rounded-lg text-ink-400 hover:text-ink-400 hover:bg-base-700 transition-colors"
                 onClick={() => setMenuOpen((o) => !o)}
               >
                 <span className="flex flex-col gap-[5px] w-5">
@@ -215,7 +218,7 @@ export default function Navbar() {
                   <span className="block h-0.5 w-full bg-current rounded" />
                   <span className="block h-0.5 w-full bg-current rounded" />
                 </span>
-              </button>
+              </IconButton>
             </>
           ) : (
             <>
@@ -229,9 +232,9 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/signup"
-                className={`px-3 py-1.5 rounded-2xl border transition-colors ${
+                className={`interactive-focus px-3 py-1.5 rounded-2xl border transition-colors ${
                   isActive('/signup')
-                    ? 'border-mint-400/50 bg-base-700 text-mint-400'
+                    ? 'border-link/50 bg-base-700 text-link'
                     : 'border-base-600 hover:bg-base-700 text-ink-400'
                 }`}
               >
@@ -247,8 +250,8 @@ export default function Navbar() {
         <div className="sm:hidden border-t border-base-700 bg-base-800 px-4 py-2 flex flex-col gap-1">
           <Link
             to="/groups"
-            className={`py-3 px-2 rounded-lg transition-colors ${
-              isActive('/groups') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+            className={`text-body interactive-focus rounded-lg px-2 py-3 transition-colors ${
+              isActive('/groups') ? 'font-medium text-link' : 'text-ink-400 hover:bg-base-700'
             }`}
             onClick={closeMenu}
           >
@@ -256,8 +259,8 @@ export default function Navbar() {
           </Link>
           <Link
             to="/settings"
-            className={`py-3 px-2 rounded-lg transition-colors ${
-              isActive('/settings') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+            className={`text-body interactive-focus rounded-lg px-2 py-3 transition-colors ${
+              isActive('/settings') ? 'font-medium text-link' : 'text-ink-400 hover:bg-base-700'
             }`}
             onClick={closeMenu}
           >
@@ -266,8 +269,8 @@ export default function Navbar() {
           {isAdmin && (
             <Link
               to="/admin/users"
-              className={`py-3 px-2 rounded-lg transition-colors ${
-                isActive('/admin') ? 'text-mint-400 font-medium' : 'text-ink-400 hover:bg-base-700'
+              className={`text-body interactive-focus rounded-lg px-2 py-3 transition-colors ${
+                isActive('/admin') ? 'font-medium text-link' : 'text-ink-400 hover:bg-base-700'
               }`}
               onClick={closeMenu}
             >
@@ -275,13 +278,14 @@ export default function Navbar() {
             </Link>
           )}
           <button
-            className="py-3 px-2 rounded-lg text-left text-ink-400 hover:bg-base-700 transition-colors"
+            className="text-body interactive-focus rounded-lg px-2 py-3 text-left text-ink-400 transition-colors hover:bg-base-700"
             onClick={() => { closeMenu(); setFeedbackOpen(true) }}
           >
             Feedback
           </button>
+          <ThemeMenuSection onSelect={closeMenu} />
           <button
-            className="py-3 px-2 rounded-lg text-left text-ink-400 hover:bg-base-700 transition-colors"
+            className="text-body interactive-focus rounded-lg px-2 py-3 text-left text-ink-400 transition-colors hover:bg-base-700"
             onClick={handleSignOut}
           >
             Sign out

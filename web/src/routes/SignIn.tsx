@@ -89,7 +89,7 @@ export default function SignIn() {
   return (
     <div className="max-w-md mx-auto mt-16">
       <div className="card p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-ink-400">Sign in</h1>
+        <h1 className="text-title">Sign in</h1>
         
         <form onSubmit={handleEmailSignIn} className="space-y-4">
           <Input
@@ -114,14 +114,16 @@ export default function SignIn() {
             <button
               type="button"
               onClick={handleForgotPassword}
-              className="text-sm text-mint-400 hover:text-mint-300"
+              className="text-caption text-link interactive-focus rounded-lg"
             >
               Forgot password?
             </button>
           </div>
           
           {error && (
-            <div className="text-red-400 text-sm">{error}</div>
+            <div className="text-caption text-red-400" role="alert">
+              {error}
+            </div>
           )}
           
           <Button type="submit" disabled={loading} className="btn-accent w-full">
@@ -133,7 +135,7 @@ export default function SignIn() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-base-700"></div>
           </div>
-          <div className="relative flex justify-center text-sm">
+          <div className="relative flex justify-center text-caption">
             <span className="px-2 bg-base-800 text-ink-600">Or continue with</span>
           </div>
         </div>
@@ -160,9 +162,9 @@ export default function SignIn() {
           </Button>
         </div>
         
-        <div className="text-center text-sm text-ink-600">
+        <div className="text-caption text-center">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-mint-400 hover:text-mint-300">
+          <Link to="/signup" className="text-link interactive-focus rounded-lg">
             Sign up
           </Link>
         </div>

@@ -72,7 +72,7 @@ export default function SignUp() {
   return (
     <div className="max-w-md mx-auto mt-16">
       <div className="card p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-ink-400">Sign up</h1>
+        <h1 className="text-title">Sign up</h1>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -111,7 +111,9 @@ export default function SignUp() {
           />
           
           {error && (
-            <div className="text-red-400 text-sm">{error}</div>
+            <div className="text-caption text-red-400" role="alert">
+              {error}
+            </div>
           )}
           
           <Button type="submit" disabled={loading} className="btn-accent w-full">
@@ -119,9 +121,9 @@ export default function SignUp() {
           </Button>
         </form>
         
-        <div className="text-center text-sm text-ink-600">
+        <div className="text-caption text-center">
           Already have an account?{' '}
-          <Link to="/signin" className="text-mint-400 hover:text-mint-300">
+          <Link to="/signin" className="text-link interactive-focus rounded-lg">
             Sign in
           </Link>
         </div>

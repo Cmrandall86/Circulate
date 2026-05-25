@@ -62,10 +62,10 @@ function toDateTimeLocalValue(date: Date): string {
 
 function presetButtonClassName(isSelected: boolean): string {
   const base =
-    'rounded-lg border px-3 py-2 text-left text-sm transition-colors disabled:cursor-default'
+    'text-body interactive-focus rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-default'
 
   if (isSelected) {
-    return `${base} border-mint-400 bg-mint-400/10 text-mint-300`
+    return `${base} border-link bg-mint-400/10 text-link font-semibold`
   }
 
   return `${base} border-base-600 bg-base-900/40 text-ink-400 hover:border-base-500 hover:bg-base-800`
@@ -151,7 +151,7 @@ export default function ItemInterestQueue({
   if (isLoading) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">Loading interest queue…</p>
+        <p className="text-caption">Loading interest queue…</p>
       </section>
     )
   }
@@ -159,7 +159,7 @@ export default function ItemInterestQueue({
   if (error) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-red-400">
+        <p className="text-caption text-red-400">
           Error loading interest queue: {(error as Error).message}
         </p>
       </section>
@@ -173,15 +173,15 @@ export default function ItemInterestQueue({
     <>
       <section className={panelClassName}>
         <header className="mb-4 space-y-1">
-          <h3 className="text-base font-medium text-ink-400">Interest queue</h3>
-          <p className="text-sm text-ink-600">
+          <h3 className="text-heading">Interest queue</h3>
+          <p className="text-caption">
             Members who want this item, sorted by level then arrival time. Reserve
             one person and choose how long the pickup window lasts.
           </p>
         </header>
 
         {!queue?.length ? (
-          <p className="text-sm text-ink-600">
+          <p className="text-caption">
             No one has expressed interest yet.
           </p>
         ) : (
@@ -205,25 +205,25 @@ export default function ItemInterestQueue({
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm font-medium text-ink-500">
+                        <span className="text-caption font-medium text-ink-500">
                           {avatarInitial(entry.display_name, entry.user_id)}
                         </span>
                       )}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink-400">
+                      <p className="text-body truncate font-medium">
                         {memberLabel(entry.display_name, entry.user_id)}
                       </p>
-                    <p className="text-xs text-ink-600">
+                    <p className="text-caption">
                       {formatInterestTimestamp(entry.created_at)}
                     </p>
                     {entry.mutual_group_names.length > 0 ? (
-                      <p className="mt-1 text-xs text-mint-400/90">
+                      <p className="text-caption mt-1 text-link">
                         Shared groups: {entry.mutual_group_names.join(', ')}
                       </p>
                     ) : (
-                      <p className="mt-1 text-xs text-ink-600">No shared groups</p>
+                      <p className="text-caption mt-1">No shared groups</p>
                     )}
                   </div>
                   </div>
@@ -248,7 +248,9 @@ export default function ItemInterestQueue({
         )}
 
         {mutationError && !reserveTarget && (
-          <p className="mt-4 text-sm text-red-400">Error: {mutationError}</p>
+          <p className="mt-4 text-caption text-red-400" role="alert">
+            Error: {mutationError}
+          </p>
         )}
       </section>
 
@@ -259,7 +261,7 @@ export default function ItemInterestQueue({
       >
         {reserveTarget && (
           <div className="space-y-4">
-            <p className="text-ink-500">
+            <p className="text-body text-ink-500">
               Reserve this item for{' '}
               <strong className="text-ink-400">{reserveTarget.displayName}</strong>.
               Choose how long they have to coordinate pickup.
@@ -278,8 +280,8 @@ export default function ItemInterestQueue({
                     setExpiryPreset(preset.id)
                   }}
                 >
-                  <span className="block font-medium">{preset.label}</span>
-                  <span className="block text-xs text-ink-600">{preset.description}</span>
+                  <span className="text-body block font-medium">{preset.label}</span>
+                  <span className="text-caption block">{preset.description}</span>
                 </button>
               ))}
             </div>
@@ -300,7 +302,7 @@ export default function ItemInterestQueue({
             )}
 
             {previewExpiresAt !== undefined && (
-              <p className="text-sm text-ink-600">
+              <p className="text-caption">
                 Pickup window:{' '}
                 <span className="text-ink-400">
                   {formatReservationExpiryLabel(previewExpiresAt)}
@@ -308,7 +310,11 @@ export default function ItemInterestQueue({
               </p>
             )}
 
-            {formError && <p className="text-sm text-red-400">Error: {formError}</p>}
+            {formError && (
+              <p className="text-caption text-red-400" role="alert">
+                Error: {formError}
+              </p>
+            )}
 
             <div className="flex gap-2 justify-end">
               <Button

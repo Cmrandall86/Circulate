@@ -53,7 +53,7 @@ export default function ItemEdit() {
   if (!settled || isLoading || (!!item && item.status === 'archived' && archiveKindLoading)) {
     return (
       <div className="max-w-5xl mx-auto py-6">
-        <div className="text-ink-500">Loading...</div>
+        <div className="text-body text-ink-500">Loading...</div>
       </div>
     )
   }
@@ -76,9 +76,9 @@ export default function ItemEdit() {
     return (
       <div className="max-w-5xl mx-auto py-6">
         <div className="card p-6">
-          <p className="text-ink-500">You do not have permission to edit this item.</p>
+          <p className="text-body text-ink-500">You do not have permission to edit this item.</p>
           <button
-            className="mt-4 text-mint-400 underline text-sm"
+            className="text-caption text-link interactive-focus mt-4 rounded-lg underline"
             onClick={() => navigate({ to: `/item/${id}` })}
           >
             Back to item
@@ -92,12 +92,12 @@ export default function ItemEdit() {
     return (
       <div className="max-w-5xl mx-auto py-6">
         <div className="card p-6">
-          <p className="text-ink-500">
+          <p className="text-body text-ink-500">
             This item is locked because the handoff is complete. Completed giveaways
             cannot be edited.
           </p>
           <button
-            className="mt-4 text-mint-400 underline text-sm"
+            className="text-caption text-link interactive-focus mt-4 rounded-lg underline"
             onClick={() => navigate({ to: `/item/${id}` })}
           >
             Back to item

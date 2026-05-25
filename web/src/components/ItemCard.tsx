@@ -16,6 +16,8 @@ interface ItemCardProps {
   interestCount?: number
   hasUnreadInterest?: boolean
   publicArea?: string | null
+  /** Cap card width on larger screens when the feed has only a few items. */
+  constrainWidth?: boolean
 }
 
 export default function ItemCard({
@@ -24,6 +26,7 @@ export default function ItemCard({
   interestCount,
   hasUnreadInterest,
   publicArea,
+  constrainWidth = false,
 }: ItemCardProps) {
   const firstImage = item.item_images?.[0]
   const imageUrl = firstImage?.signed_url || firstImage?.path
@@ -35,7 +38,11 @@ export default function ItemCard({
     : itemStatusBadgeVariant(item.status)
 
   return (
-    <Link to="/item/$id" params={{ id: item.id }} className="block h-full">
+    <Link
+      to="/item/$id"
+      params={{ id: item.id }}
+      className={`block h-full w-full ${constrainWidth ? 'max-w-full sm:max-w-[260px]' : ''}`}
+    >
       <Card className="p-4 [@media(hover:hover)]:hover:border-mint-400 transition-colors cursor-pointer h-full flex flex-col">
         {imageUrl ? (
           <div className="w-full aspect-[4/5] bg-base-700 rounded-lg mb-4 overflow-hidden flex items-center justify-center">
@@ -48,16 +55,16 @@ export default function ItemCard({
           </div>
         ) : (
           <div className="w-full aspect-[4/5] bg-base-700 rounded-lg mb-4 flex items-center justify-center">
-            <span className="text-ink-600 text-sm">No image</span>
+            <span className="text-caption">No image</span>
           </div>
         )}
         <div className="flex flex-col flex-1">
-          <h3 className="text-lg font-semibold text-ink-400 mb-2 line-clamp-2">{item.title}</h3>
+          <h3 className="text-heading mb-2 line-clamp-2">{item.title}</h3>
           {item.description && (
-            <p className="text-ink-600 text-sm mb-2 line-clamp-2">{item.description}</p>
+            <p className="text-caption mb-2 line-clamp-2">{item.description}</p>
           )}
           {publicArea && (
-            <p className="text-ink-600 text-sm mb-2">{publicArea}</p>
+            <p className="text-caption mb-2">{publicArea}</p>
           )}
           <div className="flex items-center justify-between mt-auto pt-2 gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -66,8 +73,8 @@ export default function ItemCard({
               </Badge>
               {interestCount !== undefined && interestCount > 0 && (
                 <span
-                  className={`inline-flex items-center gap-1 text-xs ${
-                    hasUnreadInterest ? 'text-mint-400' : 'text-ink-600'
+                  className={`text-caption inline-flex items-center gap-1 ${
+                    hasUnreadInterest ? 'text-link' : 'text-ink-600'
                   }`}
                 >
                   {hasUnreadInterest && (
@@ -81,7 +88,7 @@ export default function ItemCard({
               )}
             </div>
             {item.category && (
-              <span className="text-ink-600 text-sm shrink-0">{item.category}</span>
+              <span className="text-caption shrink-0">{item.category}</span>
             )}
           </div>
         </div>

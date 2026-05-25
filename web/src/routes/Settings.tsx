@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { getAvatarDisplayUrl } from '@/lib/avatar'
@@ -17,6 +17,7 @@ export default function Settings() {
   const [publicArea, setPublicArea] = useState('')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const publicAreaHintId = useId()
 
   useEffect(() => {
     if (!profile) return
@@ -60,7 +61,7 @@ export default function Settings() {
   }
 
   if (isLoading) {
-    return <div className="text-ink-500">Loading settings…</div>
+    return <div className="text-body text-ink-500">Loading settings…</div>
   }
 
   if (error) {
@@ -69,11 +70,11 @@ export default function Settings() {
 
   return (
     <div className="max-w-lg mx-auto">
-      <h1 className="text-2xl text-ink-400 mb-6">Settings</h1>
+      <h1 className="text-title mb-6">Settings</h1>
 
       <form onSubmit={handleSave} className="card p-6 space-y-6">
         <div>
-          <label className="block text-ink-500 mb-2">Avatar</label>
+          <label className="text-caption mb-2 block text-ink-500">Avatar</label>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-base-700 border border-base-600 overflow-hidden flex items-center justify-center shrink-0">
               {avatarPreview ? (
@@ -83,7 +84,7 @@ export default function Settings() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-ink-600 text-xs">None</span>
+                <span className="text-caption text-ink-600">None</span>
               )}
             </div>
             <div>
@@ -92,10 +93,10 @@ export default function Settings() {
                 accept="image/jpeg,image/png,image/webp"
                 disabled={isPending}
                 onChange={handleAvatarChange}
-                className="text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:bg-base-700 file:text-ink-400 hover:file:bg-base-600"
+                className="text-caption text-ink-500 file:mr-3 file:rounded-xl file:border-0 file:bg-base-700 file:px-3 file:py-1.5 file:text-ink-400 hover:file:bg-base-600"
               />
               {uploadAvatar.isPending && (
-                <p className="text-ink-600 text-sm mt-1">Uploading…</p>
+                <p className="text-caption mt-1">Uploading…</p>
               )}
             </div>
           </div>
@@ -115,17 +116,22 @@ export default function Settings() {
           onChange={(e) => setPublicArea(e.target.value)}
           placeholder="e.g. Capitol Hill, Seattle"
           disabled={isPending}
+          descriptionId={publicAreaHintId}
         />
-        <p className="text-ink-600 text-sm -mt-4">
+        <p id={publicAreaHintId} className="text-caption -mt-4">
           General area shown on your items. Exact address never goes here.
         </p>
 
         {mutationError && (
-          <p className="text-red-400 text-sm">Error: {mutationError}</p>
+          <p className="text-caption text-red-400" role="alert">
+            Error: {mutationError}
+          </p>
         )}
 
         {saved && !mutationError && (
-          <p className="text-mint-400 text-sm">Settings saved.</p>
+          <p className="text-caption text-link" role="status">
+            Settings saved.
+          </p>
         )}
 
         <Button type="submit" disabled={isPending}>

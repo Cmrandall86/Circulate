@@ -24,10 +24,10 @@ const panelClassName =
 
 function levelButtonClassName(isSelected: boolean): string {
   const base =
-    'w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors disabled:cursor-default'
+    'text-body interactive-focus w-full rounded-lg border px-4 py-3 text-left font-medium transition-colors disabled:cursor-default'
 
   if (isSelected) {
-    return `${base} border-mint-400 bg-mint-400/10 text-mint-300`
+    return `${base} border-link bg-mint-400/10 text-link font-semibold`
   }
 
   return `${base} border-base-600 bg-base-900/40 text-ink-400 hover:border-base-500 hover:bg-base-800`
@@ -73,8 +73,8 @@ export default function ItemInterestActions({
     return (
       <section className={panelClassName}>
         <header className="mb-4 space-y-1">
-          <h3 className="text-base font-medium text-ink-400">Express interest</h3>
-          <p className="text-sm text-ink-600">
+          <h3 className="text-heading">Express interest</h3>
+          <p className="text-caption">
             Sign in to let the owner know you want this item.
           </p>
         </header>
@@ -97,7 +97,7 @@ export default function ItemInterestActions({
   if (isReserved) {
     if (interestLoading || reservationLoading) {
       return (
-        <div className="mt-6 text-sm text-ink-600">Loading reservation…</div>
+        <div className="text-caption mt-6">Loading reservation…</div>
       )
     }
 
@@ -105,8 +105,8 @@ export default function ItemInterestActions({
       return (
         <section className={panelClassName}>
           <header className="mb-2 space-y-1">
-            <h3 className="text-base font-medium text-mint-300">You were chosen</h3>
-            <p className="text-sm text-ink-400">
+            <h3 className="text-heading text-link">You were chosen</h3>
+            <p className="text-caption text-ink-400">
               The owner reserved this item for you. Coordinate pickup outside the
               app
               {myReservation.expires_at ? (
@@ -134,7 +134,7 @@ export default function ItemInterestActions({
     if (myInterest) {
       return (
         <section className={panelClassName}>
-          <p className="text-sm text-ink-600">
+          <p className="text-caption">
             This item is reserved for someone else. Your interest is still on
             record if the reservation falls through.
           </p>
@@ -144,7 +144,7 @@ export default function ItemInterestActions({
 
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">
+        <p className="text-caption">
           This item is not accepting interest right now.
         </p>
       </section>
@@ -154,7 +154,7 @@ export default function ItemInterestActions({
   if (!isAvailable) {
     return (
       <section className={panelClassName}>
-        <p className="text-sm text-ink-600">
+        <p className="text-caption">
           This item is not accepting interest right now.
         </p>
       </section>
@@ -163,7 +163,7 @@ export default function ItemInterestActions({
 
   if (interestLoading) {
     return (
-      <div className="mt-6 text-sm text-ink-600">Loading interest…</div>
+      <div className="text-caption mt-6">Loading interest…</div>
     )
   }
 
@@ -172,10 +172,10 @@ export default function ItemInterestActions({
   return (
     <section className={panelClassName}>
       <header className="mb-4 space-y-1">
-        <h3 className="text-base font-medium text-ink-400">
+        <h3 className="text-heading">
           {currentLevel ? 'Your interest' : 'Express interest'}
         </h3>
-        <p className="text-sm text-ink-600">
+        <p className="text-caption">
           {currentLevel
             ? `You're currently set to "${INTEREST_LEVELS[currentLevel]}". Pick another level to update.`
             : 'Choose how strongly you want this item.'}
@@ -216,7 +216,9 @@ export default function ItemInterestActions({
       )}
 
       {mutationError && (
-        <p className="mt-4 text-sm text-red-400">Error: {mutationError}</p>
+        <p className="mt-4 text-caption text-red-400" role="alert">
+          Error: {mutationError}
+        </p>
       )}
     </section>
   )

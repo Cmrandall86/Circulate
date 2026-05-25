@@ -18,14 +18,15 @@ import Settings from './routes/Settings'
 import AuthGate from '@/components/AuthGate'
 import AdminGate from '@/components/AdminGate'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import { AuthProvider } from '@/hooks/useAuth' // ⬅️ add this
+import { AuthProvider } from '@/hooks/useAuth'
+import { ThemeProvider } from '@/hooks/useTheme'
 
 const rootRoute = createRootRouteWithContext<{}>()({
   component: Root,
   notFoundComponent: () => (
     <div className="p-6 card border border-base-700 max-w-lg mx-auto mt-12">
-      <h2 className="text-lg font-semibold mb-2 text-ink-400">Not found</h2>
-      <p className="text-ink-600">The page you're looking for doesn't exist. <a href="/" className="text-ink-400 underline">Go home</a></p>
+      <h2 className="text-heading mb-2">Not found</h2>
+      <p className="text-caption">The page you're looking for doesn't exist. <a href="/" className="text-body underline">Go home</a></p>
     </div>
   ),
 })
@@ -115,12 +116,14 @@ const qc = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={qc}>
-      <AuthProvider> {/* ⬅️ wrap the entire app so AdminGate shares auth + cache */}
-        <ErrorBoundary>
-          <RouterProvider router={router} />
-        </ErrorBoundary>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={qc}>
+        <AuthProvider>
+          <ErrorBoundary>
+            <RouterProvider router={router} />
+          </ErrorBoundary>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   </React.StrictMode>
 )
